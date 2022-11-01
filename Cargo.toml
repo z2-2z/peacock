@@ -1,0 +1,16 @@
+[package]
+name = "peacock-fuzz"
+version = "0.1.0"
+edition = "2021"
+
+[profile.release]
+lto = true
+codegen-units = 1
+debug = true
+panic = "abort"
+#target-cpu = "native"
+
+[dependencies]
+serde_json = { version = "1.0.87", features = ["default", "preserve_order"] }
+json_comments = "0.2.1"
+indexmap = "1.9.1"

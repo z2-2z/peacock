@@ -1,0 +1,18 @@
+/* comment */
+{
+    // comment
+    "<ENTRYPOINT>" : [
+        ["'asdf'"],
+        ["<yeet>", "'''", "<yeet>"]
+    ],
+    
+    // comment
+    "<key1>" : [
+        ["<key1>"]
+    ],
+    
+    // comment
+    "<yeet>" : [
+        ["'asdf'"]
+    ]
+}
