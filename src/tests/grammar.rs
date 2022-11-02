@@ -9,7 +9,6 @@ fn test_syntax() {
 }
 
 #[test]
-#[ignore]
 fn test_gnf() {
     let mut grammar = ContextFreeGrammar::from_json("src/tests/grammars/gnf.json").unwrap();
     grammar.convert_to_gnf();

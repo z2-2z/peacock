@@ -41,6 +41,7 @@ impl NonTerminal {
 
 /// A terminal that points into the `terminals` array
 /// of the context free grammar.
+#[derive(Clone, Eq, Hash, PartialEq)]
 struct Terminal(usize);
 
 impl Terminal {
@@ -367,11 +368,85 @@ impl ContextFreeGrammar {
         self.rules.retain(|rule| !nodes.contains_key(&rule.lhs));
     }
     
+    /// Get a NonTerminal with a unique ID
+    fn next_nonterminal(&mut self) -> NonTerminal {
+        let id = self.nonterminal_cursor;
+        self.nonterminal_cursor += 1;
+        NonTerminal(id)
+    }
+    
+    /// Create a new non-terminal that produces the current
+    /// entrypoint and make it the new entrypoint.
+    /// This ensures that the entrypoint of a CFG does not appear
+    /// on the right-hand side of any production rule.
+    fn new_entrypoint(&mut self) {
+        let new_entrypoint = self.next_nonterminal();
+        let old_entrypoint = self.entrypoint.clone();
+        
+        self.rules.push(ProductionRule {
+            lhs: new_entrypoint.clone(),
+            rhs: vec![Variable::NonTerminal(old_entrypoint)],
+        });
+        
+        self.entrypoint = new_entrypoint;
+    }
+    
+    /// Introduce a new non-terminal for every terminal and replace
+    /// its occurences on the right-hand sides of a production rules
+    /// with the new non-terminal.
+    fn isolate_terminals(&mut self) {
+        /* Due to borrow problems we have to calculate all non-terminal ids beforehand */
+        let mut nonterminals = Vec::<NonTerminal>::with_capacity(self.terminals.len());
+        let mut terminals: Vec<Option<Terminal>> = vec![None; self.terminals.len()];
+        
+        for _ in 0..self.terminals.len() {
+            nonterminals.push(self.next_nonterminal());
+        }
+        
+        for rule in &mut self.rules {
+            for var in &mut rule.rhs {
+                let term = match var {
+                    Variable::Terminal(term) => term.clone(),
+                    _ => {
+                        continue;
+                    },
+                };
+                
+                terminals[term.index()] = Some(term.clone());                
+                *var = Variable::NonTerminal(nonterminals[term.index()].clone());
+            }
+        }
+        
+        for i in 0..self.terminals.len() {
+            if let Some(term) = &terminals[i] {
+                self.rules.push(ProductionRule {
+                    lhs: nonterminals[term.index()].clone(),
+                    rhs: vec![Variable::Terminal(term.clone())],
+                });
+            }
+        }
+    }
+    
+    /// Make sure that not more than 2 non-terminals appear
+    /// on the right-hand side of any production rule.
+    fn bin_rhs_cnf(&mut self) {
+        //TODO
+    }
+    
+    /// Convert this context-free grammar into Chomsky Normal Form.
+    fn convert_to_cnf(&mut self) {
+        self.new_entrypoint();
+        self.isolate_terminals();
+        self.bin_rhs_cnf();
+        // The grammar specification disallows epsilon rules so we don't have to remove them here
+        //TODO: eliminate unit rules
+    }
+    
     /// Convert this context-free grammar into Greibach Normal Form.
     pub(crate) fn convert_to_gnf(&mut self) {
-        todo!();
+        self.convert_to_cnf();
         
-        //Ok(())
+        //TODO
     }
 }
 
