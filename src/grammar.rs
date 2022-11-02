@@ -57,7 +57,7 @@ impl Terminal {
 
 /// The set of variables in a context-free grammar is the union of
 /// terminals and non-terminals.
-#[derive(Hash)]
+#[derive(Clone, Hash)]
 enum Variable {
     NonTerminal(NonTerminal),
     Terminal(Terminal),
@@ -504,6 +504,7 @@ impl ContextFreeGrammar {
     /// Eliminate unit rules of the form A -> B for non-terminals
     /// A and B.
     fn eliminate_unit_rules(&mut self) {
+        /* Delete unit rules and store them in temporary */
         let mut pairs = Vec::<(NonTerminal, NonTerminal)>::new();
         let mut i = 0;
         
@@ -520,15 +521,48 @@ impl ContextFreeGrammar {
             
             i += 1;
         }
+        
+        /* Check for transitive unit rules: A -> B -> C yields A -> C */
+        i = 0;
+        
+        'outer_loop:
+        while i < pairs.len() {
+            for j in 0..pairs.len() {
+                if pairs[i].1 == pairs[j].0 {
+                    let new_pair = (pairs[i].0.clone(), pairs[j].1.clone());
+                    
+                    if !pairs.contains(&new_pair) {
+                        pairs.push(new_pair);
+                        i = 0;
+                        continue 'outer_loop;
+                    }
+                }
+            }
+            
+            i += 1;
+        }
+        
+        /* Expand right-hand side of unit rules */
+        for (src, dst) in pairs {
+            for i in 0..self.rules.len() {
+                if self.rules[i].lhs == dst {
+                    self.rules.push(ProductionRule {
+                        lhs: src.clone(),
+                        rhs: self.rules[i].rhs.clone(),
+                    });
+                }
+            }
+        }
     }
     
     /// Convert this context-free grammar into Chomsky Normal Form.
-    fn convert_to_cnf(&mut self) {
+    pub(crate) fn convert_to_cnf(&mut self) {
         self.new_entrypoint();
         self.isolate_terminals();
         self.bin_rhs_cnf();
         // The grammar specification disallows epsilon rules so we don't have to remove them here
-        //self.eliminate_unit_rules();
+        self.eliminate_unit_rules();
+        self.remove_duplicates();
     }
     
     /// Convert this context-free grammar into Greibach Normal Form.
