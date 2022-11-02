@@ -2,7 +2,7 @@ use std::path::Path;
 use std::fs::File;
 use std::io::BufReader;
 use std::fmt::{Display, Formatter, Result as FmtResult};
-use std::collections::{HashSet, HashMap};
+use std::hash::{BuildHasher, Hasher, Hash};
 
 use serde_json as json;
 use json_comments::{StripComments, CommentSettings};
@@ -11,6 +11,11 @@ use petgraph::{
     matrix_graph::{MatrixGraph, NodeIndex},
     algo::is_cyclic_directed,
     visit::Bfs as BreadthFirstSearch,
+};
+use ahash::{
+    AHashSet as HashSet,
+    AHashMap as HashMap,
+    RandomState,
 };
 
 /// Name of the non-terminal where generation should start
@@ -52,6 +57,7 @@ impl Terminal {
 
 /// The set of variables in a context-free grammar is the union of
 /// terminals and non-terminals.
+#[derive(Hash)]
 enum Variable {
     NonTerminal(NonTerminal),
     Terminal(Terminal),
@@ -67,9 +73,19 @@ impl Variable {
 }
 
 /// A single production rule of the context-free grammar.
+#[derive(Hash)]
 struct ProductionRule {
     lhs: NonTerminal,
     rhs: Vec<Variable>,
+}
+
+impl ProductionRule {
+    fn fixed_hash(&self) -> u64 {
+        let state = RandomState::with_seed(0);
+        let mut hasher = state.build_hasher();
+        self.hash(&mut hasher);
+        hasher.finish()
+    }
 }
 
 /// A context-free grammar.
@@ -262,6 +278,7 @@ impl ContextFreeGrammar {
             entrypoint,
             nonterminal_cursor: nonterminal_cursor + 1,
         };
+        ret.remove_duplicates();
         ret.check_cycles()?;
         ret.remove_unused_rules();
         Ok(ret)
@@ -380,6 +397,23 @@ impl ContextFreeGrammar {
         self.rules.retain(|rule| !nodes.contains_key(&rule.lhs));
     }
     
+    /// Remove duplicate rules
+    fn remove_duplicates(&mut self) {
+        let mut hashes = HashSet::<u64>::new();
+        let mut i = 0;
+        
+        while i < self.rules.len() {
+            let rule_hash = self.rules[i].fixed_hash();
+            
+            if !hashes.insert(rule_hash) {
+                self.rules.remove(i);
+                continue;
+            }
+            
+            i += 1;
+        }
+    }
+    
     /// Get a NonTerminal with a unique ID
     fn next_nonterminal(&mut self) -> NonTerminal {
         let id = self.nonterminal_cursor;
@@ -467,19 +501,40 @@ impl ContextFreeGrammar {
         }
     }
     
+    /// Eliminate unit rules of the form A -> B for non-terminals
+    /// A and B.
+    fn eliminate_unit_rules(&mut self) {
+        let mut pairs = Vec::<(NonTerminal, NonTerminal)>::new();
+        let mut i = 0;
+        
+        while i < self.rules.len() {
+            if self.rules[i].rhs.len() == 1 && self.rules[i].rhs[0].is_non_terminal() {
+                let rule = self.rules.remove(i);
+                let rhs = match &rule.rhs[0] {
+                    Variable::NonTerminal(rhs) => rhs.clone(),
+                    _ => unreachable!(),
+                };
+                pairs.push((rule.lhs, rhs));
+                continue;
+            }
+            
+            i += 1;
+        }
+    }
+    
     /// Convert this context-free grammar into Chomsky Normal Form.
     fn convert_to_cnf(&mut self) {
         self.new_entrypoint();
         self.isolate_terminals();
         self.bin_rhs_cnf();
         // The grammar specification disallows epsilon rules so we don't have to remove them here
-        //TODO: eliminate unit rules
+        //self.eliminate_unit_rules();
     }
     
     /// Convert this context-free grammar into Greibach Normal Form.
     pub(crate) fn convert_to_gnf(&mut self) {
         self.convert_to_cnf();
-        
+        //TODO: remove left-recursion
         //TODO
     }
 }

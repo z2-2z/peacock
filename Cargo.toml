@@ -15,3 +15,4 @@ serde_json = { version = "1.0.87", features = ["default", "preserve_order"] }
 json_comments = "0.2.1"
 indexmap = "1.9.1"
 petgraph = "0.6.2"
+ahash = "0.8.1"
