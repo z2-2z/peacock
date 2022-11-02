@@ -9,9 +9,15 @@ fn test_syntax() {
 }
 
 #[test]
-fn test_gnf() {
-    let mut grammar = ContextFreeGrammar::from_json("src/tests/grammars/gnf.json").unwrap();
-    grammar.convert_to_gnf();
+fn test_cnf() {
+    let mut grammar = ContextFreeGrammar::from_json("src/tests/grammars/cnf.json").unwrap();
+    grammar.convert_to_cnf();
+    assert!(grammar.is_cnf());
+    
+    let old_len = grammar.rules().len();
+    grammar.convert_to_cnf();
+    assert_eq!(old_len, grammar.rules().len());
+    
     println!("{}", grammar);
 }
 

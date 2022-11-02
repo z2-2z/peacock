@@ -19,7 +19,7 @@ use ahash::{
 };
 
 /// Name of the non-terminal where generation should start
-pub const ENTRYPOINT: &str = "ENTRYPOINT";
+pub(crate) const ENTRYPOINT: &str = "ENTRYPOINT";
 
 /// Errors that can appear while parsing and converting
 /// context free grammars
@@ -36,7 +36,7 @@ pub(crate) enum GrammarError {
 /// by names in the grammar we use integers for better
 /// efficiency.
 #[derive(Clone, Eq, Hash, PartialEq)]
-struct NonTerminal(usize);
+pub(crate) struct NonTerminal(usize);
 
 impl NonTerminal {
     fn id(&self) -> usize {
@@ -47,7 +47,7 @@ impl NonTerminal {
 /// A terminal that points into the `terminals` array
 /// of the context free grammar.
 #[derive(Clone, Eq, Hash, PartialEq)]
-struct Terminal(usize);
+pub(crate) struct Terminal(usize);
 
 impl Terminal {
     fn index(&self) -> usize {
@@ -58,7 +58,7 @@ impl Terminal {
 /// The set of variables in a context-free grammar is the union of
 /// terminals and non-terminals.
 #[derive(Clone, Hash)]
-enum Variable {
+pub(crate) enum Variable {
     NonTerminal(NonTerminal),
     Terminal(Terminal),
 }
@@ -70,11 +70,18 @@ impl Variable {
             _ => false,
         }
     }
+    
+    fn is_terminal(&self) -> bool {
+        match self {
+            Variable::Terminal(_) => true,
+            _ => false,
+        }
+    }
 }
 
 /// A single production rule of the context-free grammar.
 #[derive(Hash)]
-struct ProductionRule {
+pub(crate) struct ProductionRule {
     lhs: NonTerminal,
     rhs: Vec<Variable>,
 }
@@ -426,15 +433,32 @@ impl ContextFreeGrammar {
     /// This ensures that the entrypoint of a CFG does not appear
     /// on the right-hand side of any production rule.
     fn new_entrypoint(&mut self) {
-        let new_entrypoint = self.next_nonterminal();
-        let old_entrypoint = self.entrypoint.clone();
+        let mut need_new = false;
         
-        self.rules.push(ProductionRule {
-            lhs: new_entrypoint.clone(),
-            rhs: vec![Variable::NonTerminal(old_entrypoint)],
-        });
+        for rule in &self.rules {
+            for var in &rule.rhs {
+                match var {
+                    Variable::NonTerminal(nonterm) => {
+                        if nonterm == &self.entrypoint {
+                            need_new = true;
+                        }
+                    },
+                    _ => {},
+                }
+            }
+        }
         
-        self.entrypoint = new_entrypoint;
+        if need_new {
+            let new_entrypoint = self.next_nonterminal();
+            let old_entrypoint = self.entrypoint.clone();
+            
+            self.rules.push(ProductionRule {
+                lhs: new_entrypoint.clone(),
+                rhs: vec![Variable::NonTerminal(old_entrypoint)],
+            });
+            
+            self.entrypoint = new_entrypoint;
+        }
     }
     
     /// Introduce a new non-terminal for every terminal and replace
@@ -444,6 +468,10 @@ impl ContextFreeGrammar {
         let mut assoc = HashMap::<Terminal, NonTerminal>::new();
         
         for rule in &mut self.rules {
+            if rule.rhs.len() == 1 {
+                continue;
+            }
+            
             for var in &mut rule.rhs {
                 let term = match var {
                     Variable::Terminal(term) => term.clone(),
@@ -458,7 +486,7 @@ impl ContextFreeGrammar {
                     assoc.insert(term, nonterm.clone());
                     nonterm
                 };
-                              
+                
                 *var = Variable::NonTerminal(nonterm.clone());
             }
         }
@@ -565,11 +593,35 @@ impl ContextFreeGrammar {
         self.remove_duplicates();
     }
     
+    /// Check whether this context-free grammar is in Chomsky Normal Form.
+    pub(crate) fn is_cnf(&self) -> bool {
+        for rule in &self.rules {
+            if rule.rhs.len() == 1 {
+                if rule.rhs[0].is_non_terminal() {
+                    return false;
+                }
+            } else if rule.rhs.len() == 2 {
+                if rule.rhs[0].is_terminal() || rule.rhs[1].is_terminal() {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+        
+        true
+    }
+    
     /// Convert this context-free grammar into Greibach Normal Form.
     pub(crate) fn convert_to_gnf(&mut self) {
         self.convert_to_cnf();
         //TODO: remove left-recursion
         //TODO
+    }
+    
+    /// Access the production rules
+    pub(crate) fn rules(&self) -> &[ProductionRule] {
+        &self.rules
     }
 }
 
