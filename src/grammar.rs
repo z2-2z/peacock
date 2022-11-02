@@ -2,10 +2,15 @@ use std::path::Path;
 use std::fs::File;
 use std::io::BufReader;
 use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::collections::{HashSet, HashMap};
 
 use serde_json as json;
 use json_comments::{StripComments, CommentSettings};
 use indexmap::IndexMap;
+use petgraph::{
+    matrix_graph::{MatrixGraph, NodeIndex},
+    algo::is_cyclic_directed,
+};
 
 /// Name of the non-terminal where generation should start
 pub const ENTRYPOINT: &str = "ENTRYPOINT";
@@ -16,12 +21,15 @@ pub const ENTRYPOINT: &str = "ENTRYPOINT";
 pub(crate) enum GrammarError {
     /// Parsing of the grammar failed
     InvalidFormat(String),
+    
+    /// The specified grammar contains infinite loops
+    ContainsCycles,
 }
 
 /// A non-terminal. While non-terminals are identified
 /// by names in the grammar we use integers for better
 /// efficiency.
-#[derive(Clone)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 struct NonTerminal(usize);
 
 impl NonTerminal {
@@ -47,6 +55,15 @@ enum Variable {
     Terminal(Terminal),
 }
 
+impl Variable {
+    fn is_non_terminal(&self) -> bool {
+        match self {
+            Variable::NonTerminal(_) => true,
+            _ => false,
+        }
+    }
+}
+
 /// A single production rule of the context-free grammar.
 struct ProductionRule {
     lhs: NonTerminal,
@@ -58,6 +75,7 @@ pub(crate) struct ContextFreeGrammar {
     terminals: Vec<String>,
     rules: Vec<ProductionRule>,
     entrypoint: NonTerminal,
+    nonterminal_cursor: usize,
 }
 
 /// A helper for parsing. In the grammar file
@@ -179,6 +197,7 @@ impl ContextFreeGrammar {
         
         /* Construct production rules */
         let mut rules = Vec::<ProductionRule>::new();
+        let mut nonterminal_cursor = 0;
         
         for (key, value) in grammar.as_object().unwrap() {
             let nonterm = match VariableString::parse(key).unwrap() {
@@ -211,6 +230,8 @@ impl ContextFreeGrammar {
                     _ => unreachable!(),
                 };
                 
+                nonterminal_cursor = std::cmp::max(nonterminal_cursor, lhs.id());
+                
                 rules.push(ProductionRule {
                     lhs: lhs.clone(),
                     rhs,
@@ -221,11 +242,88 @@ impl ContextFreeGrammar {
         let entrypoint = NonTerminal(*non_terminals.get(ENTRYPOINT).unwrap());
         let terminals = terminals.drain(..).map(|(key, _)| key).collect::<Vec<String>>();
         
-        Ok(ContextFreeGrammar {
+        let ret = ContextFreeGrammar {
             terminals,
             rules,
             entrypoint,
-        })
+            nonterminal_cursor: nonterminal_cursor + 1,
+        };
+        
+        ret.check_cycles()?;
+        
+        Ok(ret)
+    }
+    
+    /// Check if the current context-free grammar contains infinite loops.
+    fn check_cycles(&self) -> Result<(), GrammarError> {
+        /* First, identify non-terminals that would terminate a cycle */
+        let mut terminators = HashSet::<NonTerminal>::new();
+        
+        'next_rule:
+        for rule in &self.rules {
+            for var in &rule.rhs {
+                if var.is_non_terminal() {
+                    continue 'next_rule;
+                }
+            }
+            
+            terminators.insert(rule.lhs.clone());
+        }
+        
+        /* Build a graph with all non-terminals that don't terminate a cycle */
+        let mut nodes = HashMap::<NonTerminal, NodeIndex>::new();
+        let mut graph = MatrixGraph::<(), ()>::with_capacity(self.nonterminal_cursor - terminators.len());
+        
+        for rule in &self.rules {
+            if terminators.contains(&rule.lhs) {
+                continue;
+            }
+            
+            let src = if let Some(idx) = nodes.get(&rule.lhs) {
+                idx.clone()
+            } else {
+                let idx = graph.add_node(());
+                nodes.insert(rule.lhs.clone(), idx.clone());
+                idx
+            };
+            
+            for var in &rule.rhs {
+                match var {
+                    Variable::NonTerminal(nonterm) => {
+                        if terminators.contains(nonterm) {
+                            continue;
+                        }
+                        
+                        let dst = if let Some(idx) = nodes.get(nonterm) {
+                            idx.clone()
+                        } else {
+                            let idx = graph.add_node(());
+                            nodes.insert(nonterm.clone(), idx.clone());
+                            idx
+                        };
+                        
+                        if !graph.has_edge(src.clone(), dst) {
+                            graph.add_edge(src.clone(), dst, ());
+                        }
+                    },
+                    _ => {},
+                }
+            }
+        }
+        
+        /* Run a cycle detection algorithm from the graph library */
+        if is_cyclic_directed(&graph) {
+            Err(GrammarError::ContainsCycles)
+        } else {
+            Ok(())
+        }
+    }
+    
+    /// Convert this context-free grammar into Greibach Normal Form.
+    pub(crate) fn convert_to_gnf(&mut self) {
+        todo!();
+        
+        //Ok(())
     }
 }
 
