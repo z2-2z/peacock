@@ -10,6 +10,7 @@ use indexmap::IndexMap;
 use petgraph::{
     matrix_graph::{MatrixGraph, NodeIndex},
     algo::is_cyclic_directed,
+    visit::Bfs as BreadthFirstSearch,
 };
 
 /// Name of the non-terminal where generation should start
@@ -242,15 +243,14 @@ impl ContextFreeGrammar {
         let entrypoint = NonTerminal(*non_terminals.get(ENTRYPOINT).unwrap());
         let terminals = terminals.drain(..).map(|(key, _)| key).collect::<Vec<String>>();
         
-        let ret = ContextFreeGrammar {
+        let mut ret = ContextFreeGrammar {
             terminals,
             rules,
             entrypoint,
             nonterminal_cursor: nonterminal_cursor + 1,
         };
-        
         ret.check_cycles()?;
-        
+        ret.remove_unused_rules();
         Ok(ret)
     }
     
@@ -317,6 +317,54 @@ impl ContextFreeGrammar {
         } else {
             Ok(())
         }
+    }
+    
+    /// Eliminate production rules that cannot be reached from the entrypoint.
+    fn remove_unused_rules(&mut self) {
+        /* Build a graph from the grammar */
+        let mut nodes = HashMap::<NonTerminal, NodeIndex>::new();
+        let mut graph = MatrixGraph::<usize, ()>::with_capacity(self.nonterminal_cursor);
+        
+        for rule in &self.rules {
+            let src = if let Some(idx) = nodes.get(&rule.lhs) {
+                idx.clone()
+            } else {
+                let idx = graph.add_node(rule.lhs.id());
+                nodes.insert(rule.lhs.clone(), idx.clone());
+                idx
+            };
+            
+            for var in &rule.rhs {
+                match var {
+                    Variable::NonTerminal(nonterm) => {
+                        let dst = if let Some(idx) = nodes.get(nonterm) {
+                            idx.clone()
+                        } else {
+                            let idx = graph.add_node(nonterm.id());
+                            nodes.insert(nonterm.clone(), idx.clone());
+                            idx
+                        };
+                        
+                        if !graph.has_edge(src.clone(), dst) {
+                            graph.add_edge(src.clone(), dst, ());
+                        }
+                    },
+                    _ => {},
+                }
+            }
+        }
+        
+        /* Conduct a BFS from the entrypoint */
+        let root = *nodes.get(&self.entrypoint).unwrap();
+        let mut bfs = BreadthFirstSearch::new(&graph, root);
+        
+        while let Some(idx) = bfs.next(&graph) {
+            let nonterm = NonTerminal(*graph.node_weight(idx));
+            nodes.remove(&nonterm);
+        }
+        
+        /* Now the nodes-map contains unvisited nodes */
+        self.rules.retain(|rule| !nodes.contains_key(&rule.lhs));
     }
     
     /// Convert this context-free grammar into Greibach Normal Form.

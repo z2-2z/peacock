@@ -1,0 +1,22 @@
+/*
+B -> ENTRYPOINT <-> A
+
+should become
+
+ENTRYPOINT <-> A
+*/
+
+{
+    "<ENTRYPOINT>" : [
+        ["'x'"],
+        ["<A>"]
+    ],
+    
+    "<A>" : [
+        ["<ENTRYPOINT>"]
+    ],
+    
+    "<B>" : [
+        ["<ENTRYPOINT>"]
+    ]
+}
