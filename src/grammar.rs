@@ -100,6 +100,18 @@ impl<'a> VariableString<'a> {
     }
 }
 
+/// Whenever ContextFreeGrammar::next_nonterminal() is not accessible
+/// due to the gosh dang borrow checker reside to this macro instead.
+macro_rules! next_nonterminal {
+    ($self:expr) => {
+        {
+            let curr = $self.nonterminal_cursor;
+            $self.nonterminal_cursor += 1;
+            NonTerminal(curr)
+        }
+    };
+}
+
 impl ContextFreeGrammar {
     /// Creates a context-free grammar from a grammar specified in a JSON file.
     /// For details on grammar syntax see the documentation in the repository.
@@ -395,13 +407,7 @@ impl ContextFreeGrammar {
     /// its occurences on the right-hand sides of a production rules
     /// with the new non-terminal.
     fn isolate_terminals(&mut self) {
-        /* Due to borrow problems we have to calculate all non-terminal ids beforehand */
-        let mut nonterminals = Vec::<NonTerminal>::with_capacity(self.terminals.len());
-        let mut terminals: Vec<Option<Terminal>> = vec![None; self.terminals.len()];
-        
-        for _ in 0..self.terminals.len() {
-            nonterminals.push(self.next_nonterminal());
-        }
+        let mut assoc = HashMap::<Terminal, NonTerminal>::new();
         
         for rule in &mut self.rules {
             for var in &mut rule.rhs {
@@ -411,26 +417,54 @@ impl ContextFreeGrammar {
                         continue;
                     },
                 };
-                
-                terminals[term.index()] = Some(term.clone());                
-                *var = Variable::NonTerminal(nonterminals[term.index()].clone());
+                let nonterm = if let Some(nonterm) = assoc.get(&term) {
+                    nonterm.clone()
+                } else {
+                    let nonterm = next_nonterminal!(self);
+                    assoc.insert(term, nonterm.clone());
+                    nonterm
+                };
+                              
+                *var = Variable::NonTerminal(nonterm.clone());
             }
         }
         
-        for i in 0..self.terminals.len() {
-            if let Some(term) = &terminals[i] {
-                self.rules.push(ProductionRule {
-                    lhs: nonterminals[term.index()].clone(),
-                    rhs: vec![Variable::Terminal(term.clone())],
-                });
-            }
+        for (term, nonterm) in assoc {
+            self.rules.push(ProductionRule {
+                lhs: nonterm,
+                rhs: vec![Variable::Terminal(term)],
+            });
         }
     }
     
     /// Make sure that not more than 2 non-terminals appear
     /// on the right-hand side of any production rule.
     fn bin_rhs_cnf(&mut self) {
-        //TODO
+        let old_len = self.rules.len();
+        
+        for i in 0..old_len {
+            if self.rules[i].rhs.len() <= 2 {
+                continue;
+            }
+            
+            let rule = self.rules.remove(i);
+            let mut rules = vec![rule];
+            
+            while rules.last().unwrap().rhs.len() > 2 {
+                let rule = rules.last_mut().unwrap();
+                
+                let rem_vars = rule.rhs.split_off(1);
+                let nonterm = self.next_nonterminal();
+                rule.rhs.push(Variable::NonTerminal(nonterm.clone()));
+                
+                rules.push(ProductionRule {
+                    lhs: nonterm,
+                    rhs: rem_vars,
+                });
+            }
+            
+            self.rules.append(&mut rules);
+        }
     }
     
     /// Convert this context-free grammar into Chomsky Normal Form.
