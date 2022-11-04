@@ -80,7 +80,7 @@ impl Variable {
 }
 
 /// A single production rule of the context-free grammar.
-#[derive(Hash)]
+#[derive(Clone, Hash)]
 pub(crate) struct ProductionRule {
     lhs: NonTerminal,
     rhs: Vec<Variable>,
@@ -92,6 +92,13 @@ impl ProductionRule {
         let mut hasher = state.build_hasher();
         self.hash(&mut hasher);
         hasher.finish()
+    }
+    
+    fn is_left_recursive(&self) -> bool {
+        match &self.rhs[0] {
+            Variable::NonTerminal(nonterm) => nonterm.id() == self.lhs.id(),
+            _ => false,
+        }
     }
 }
 
@@ -612,14 +619,70 @@ impl ContextFreeGrammar {
         true
     }
     
+    /// Break up left-recursive rules in the grammar.
+    pub(crate) fn remove_left_recursion(&mut self) {
+        let mut i = 0;
+        let mut old_len = self.rules.len();
+        
+        loop {
+            /* Find the next left-recursive rule */
+            while i < old_len {
+                if self.rules[i].is_left_recursive() {
+                    break;
+                }
+                
+                i += 1;
+            }
+            
+            if i >= old_len {
+                break;
+            }
+            
+            /* Split up rule */
+            let old_rule = self.rules.remove(i);
+            old_len -= 1;
+            
+            let new_nonterm = self.next_nonterminal();
+            let mut new_rule = ProductionRule {
+                lhs: new_nonterm.clone(),
+                rhs: old_rule.rhs[1..].to_vec(),
+            };
+            
+            self.rules.push(new_rule.clone());
+            
+            new_rule.rhs.push(Variable::NonTerminal(new_nonterm.clone()));
+            self.rules.push(new_rule);
+            
+            /* Fix-up non-recursive variants with same lhs */
+            for j in 0..old_len {
+                if self.rules[j].lhs.id() == old_rule.lhs.id() {
+                    if !self.rules[j].is_left_recursive() {
+                        let mut new_rule = self.rules[j].clone();
+                        new_rule.rhs.push(Variable::NonTerminal(new_nonterm.clone()));
+                        self.rules.push(new_rule);
+                    }
+                }
+            }
+        }
+    }
+    
+    /// Convert the CNF into GNF by repeatedly substituting
+    /// the leftmost nonterminal until every rule starts 
+    /// with a terminal.
+    fn sub_rhs_gnf(&mut self) {
+        //TODO: non-terminal ordering ? topological sort ?
+        //TODO: substitution of until GNF is met
+    }
+    
     /// Convert this context-free grammar into Greibach Normal Form.
     pub(crate) fn convert_to_gnf(&mut self) {
         self.convert_to_cnf();
-        //TODO: remove left-recursion
-        //TODO
+        self.remove_left_recursion();
+        self.sub_rhs_gnf();
+        self.remove_duplicates();
     }
     
-    /// Access the production rules
+    /// Access the production rules.
     pub(crate) fn rules(&self) -> &[ProductionRule] {
         &self.rules
     }

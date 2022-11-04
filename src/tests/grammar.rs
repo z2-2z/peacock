@@ -34,3 +34,16 @@ fn test_unused() {
     let grammar = ContextFreeGrammar::from_json("src/tests/grammars/unused.json").unwrap();
     println!("{}", grammar);
 }
+
+#[test]
+fn test_gnf() {
+    let mut grammar = ContextFreeGrammar::from_json("src/tests/grammars/gnf.json").unwrap();
+    grammar.convert_to_gnf();
+    //assert!(grammar.is_cnf());
+    
+    /*let old_len = grammar.rules().len();
+    grammar.convert_to_cnf();
+    assert_eq!(old_len, grammar.rules().len());*/
+    
+    println!("{}", grammar);
+}
