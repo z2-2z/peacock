@@ -95,9 +95,13 @@ impl ProductionRule {
     }
     
     fn is_left_recursive(&self) -> bool {
-        match &self.rhs[0] {
-            Variable::NonTerminal(nonterm) => nonterm.id() == self.lhs.id(),
-            _ => false,
+        if self.rhs.len() > 1 {
+            match &self.rhs[0] {
+                Variable::NonTerminal(nonterm) => nonterm.id() == self.lhs.id(),
+                _ => false,
+            }
+        } else {
+            false
         }
     }
 }
@@ -120,12 +124,24 @@ enum VariableString<'a> {
 
 impl<'a> VariableString<'a> {
     fn parse(value: &'a str) -> Option<Self> {
-        if value.starts_with("<") && value.ends_with(">") && value.len() >= 3 {
-            Some(VariableString::NonTerminal(&value[1..value.len() - 1]))
-        } else if value.starts_with("'") && value.ends_with("'") && value.len() >= 3 {
-            Some(VariableString::Terminal(&value[1..value.len() - 1]))
+        if value.starts_with("<") && value.ends_with(">") {
+            if value.len() > 2 {
+                Some(VariableString::NonTerminal(&value[1..value.len() - 1]))
+            } else {
+                None
+            }
+        } else if value.starts_with("'") && value.ends_with("'") {
+            if value.len() > 2 {
+                Some(VariableString::Terminal(&value[1..value.len() - 1]))
+            } else {
+                None
+            }
         } else {
-            None
+            if value.len() > 0 {
+                Some(VariableString::Terminal(value))
+            } else {
+                None
+            }
         }
     }
 }
@@ -619,8 +635,8 @@ impl ContextFreeGrammar {
         true
     }
     
-    /// Break up left-recursive rules in the grammar.
-    pub(crate) fn remove_left_recursion(&mut self) {
+    /// Break up direct left-recursive rules in the grammar.
+    fn remove_direct_left_recursions(&mut self) {
         let mut i = 0;
         let mut old_len = self.rules.len();
         
@@ -677,7 +693,7 @@ impl ContextFreeGrammar {
     /// Convert this context-free grammar into Greibach Normal Form.
     pub(crate) fn convert_to_gnf(&mut self) {
         self.convert_to_cnf();
-        self.remove_left_recursion();
+        self.remove_direct_left_recursions();
         self.sub_rhs_gnf();
         self.remove_duplicates();
     }
