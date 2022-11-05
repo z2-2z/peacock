@@ -1,6 +1,6 @@
 {
     "<ENTRYPOINT>" : [
-        ["<ENTRYPOINT>", "'a'"],
-        ["'b'"]
+        ["<ENTRYPOINT>", "<ENTRYPOINT>", "<ENTRYPOINT>", "a"],
+        ["b"]
     ]
 }
