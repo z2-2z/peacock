@@ -3,7 +3,7 @@ use crate::grammar::{ContextFreeGrammar, GrammarError};
 #[test]
 fn test_syntax() {
     match ContextFreeGrammar::from_json("src/tests/grammars/syntax.json") {
-        Err(GrammarError::InvalidFormat(s)) =>  panic!("{}", s),
+        Err(GrammarError::InvalidFormat(s)) => panic!("{}", s),
         _ => {},
     }
 }
@@ -13,11 +13,11 @@ fn test_cnf() {
     let mut grammar = ContextFreeGrammar::from_json("src/tests/grammars/cnf.json").unwrap();
     grammar.convert_to_cnf();
     assert!(grammar.is_cnf());
-    
+
     let old_len = grammar.rules().len();
     grammar.convert_to_cnf();
     assert_eq!(old_len, grammar.rules().len());
-    
+
     println!("{}", grammar);
 }
 
@@ -40,10 +40,10 @@ fn test_gnf() {
     let mut grammar = ContextFreeGrammar::from_json("src/tests/grammars/gnf.json").unwrap();
     grammar.convert_to_gnf();
     //assert!(grammar.is_cnf());
-    
+
     /*let old_len = grammar.rules().len();
     grammar.convert_to_cnf();
     assert_eq!(old_len, grammar.rules().len());*/
-    
+
     println!("{}", grammar);
 }
