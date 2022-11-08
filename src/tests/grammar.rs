@@ -39,11 +39,11 @@ fn test_unused() {
 fn test_gnf() {
     let mut grammar = ContextFreeGrammar::from_json("src/tests/grammars/gnf.json").unwrap();
     grammar.convert_to_gnf();
-    //assert!(grammar.is_cnf());
+    //assert!(grammar.is_gnf());
 
     /*let old_len = grammar.rules().len();
-    grammar.convert_to_cnf();
-    assert_eq!(old_len, grammar.rules().len());*/
-
+    grammar.convert_to_gnf();
+    assert_eq!(old_len, grammar.rules().len());
+    */
     println!("{}", grammar);
 }

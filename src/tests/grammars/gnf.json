@@ -1,6 +1,13 @@
 {
     "<ENTRYPOINT>" : [
         ["<ENTRYPOINT>", "<ENTRYPOINT>", "<ENTRYPOINT>", "a"],
-        ["b"]
+        ["b"],
+        ["<A>"]
+    ],
+    "<A>" : [
+        ["x", "y", "z", "<A>"],
+        ["x", "y", "z"],
+        ["x", "y"],
+        ["x"]
     ]
 }

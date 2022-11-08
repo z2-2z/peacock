@@ -4,6 +4,7 @@ use std::hash::{BuildHasher, Hash, Hasher};
 use std::io::BufReader;
 use std::path::Path;
 
+use itertools::Itertools;
 use ahash::{AHashMap as HashMap, AHashSet as HashSet, RandomState};
 use indexmap::IndexMap;
 use json_comments::{CommentSettings, StripComments};
@@ -35,6 +36,7 @@ pub(crate) enum GrammarError {
 pub(crate) struct NonTerminal(usize);
 
 impl NonTerminal {
+    /// All non-terminals have a unique ID
     fn id(&self) -> usize {
         self.0
     }
@@ -46,6 +48,7 @@ impl NonTerminal {
 pub(crate) struct Terminal(usize);
 
 impl Terminal {
+    /// Terminals are identified by an index into an array with all terminals.
     fn index(&self) -> usize {
         self.0
     }
@@ -53,7 +56,7 @@ impl Terminal {
 
 /// The set of symbols in a context-free grammar is the union of
 /// terminals and non-terminals.
-#[derive(Clone, Hash)]
+#[derive(Clone, Hash, PartialEq)]
 pub(crate) enum Symbol {
     NonTerminal(NonTerminal),
     Terminal(Terminal),
@@ -84,8 +87,7 @@ pub(crate) struct ProductionRule {
 
 impl ProductionRule {
     fn fixed_hash(&self) -> u64 {
-        let state = RandomState::with_seed(0);
-        let mut hasher = state.build_hasher();
+        let mut hasher = RandomState::with_seed(0).build_hasher();
         self.hash(&mut hasher);
         hasher.finish()
     }
@@ -102,7 +104,8 @@ impl ProductionRule {
     }
 }
 
-/// A context-free grammar.
+/// A grammar where the left-hand side of all production rules
+/// consists of a single non-terminal.
 pub(crate) struct ContextFreeGrammar {
     terminals: Vec<String>,
     rules: Vec<ProductionRule>,
@@ -472,6 +475,32 @@ impl ContextFreeGrammar {
 
             self.entrypoint = new_entrypoint;
         }
+
+        /* Make sure that the entrypoint always has ID 0 */
+        if self.entrypoint.id() != 0 {
+            for rule in &mut self.rules {
+                if rule.lhs.id() == 0 {
+                    rule.lhs = self.entrypoint.clone();
+                } else if rule.lhs.id() == self.entrypoint.id() {
+                    rule.lhs = NonTerminal(0);
+                }
+                
+                for var in &mut rule.rhs {
+                    match var {
+                        Symbol::NonTerminal(nonterm) => {
+                            if nonterm.id() == 0 {
+                                *nonterm = self.entrypoint.clone();
+                            } else if nonterm.id() == self.entrypoint.id() {
+                                *nonterm = NonTerminal(0);
+                            }
+                        },
+                        _ => {},
+                    }
+                }
+            }
+            
+            self.entrypoint = NonTerminal(0);
+        }
     }
 
     /// Introduce a new non-terminal for every terminal and replace
@@ -666,64 +695,95 @@ impl ContextFreeGrammar {
             i += 1;
         }
     }
+    
+    /// Find common prefixes in the expansions of non-terminals.
+    fn left_factoring(&mut self) {
+        for i in 0..self.nonterminal_cursor {
+            let mut used_rules = HashSet::<usize>::new();
+            let mut prefix_map = HashMap::<usize, Vec<(usize, usize)>>::new();
+            
+            for j in 0..self.rules.len() {
+                for k in 0..self.rules.len() {
+                    if j == k || self.rules[j].lhs.id() != i || self.rules[k].lhs.id() != i {
+                        continue;
+                    }
+                    
+                    let max_len = std::cmp::max(
+                        self.rules[j].rhs.len(),
+                        self.rules[k].rhs.len()
+                    );
+                    
+                    for l in 0..max_len {
+                        if self.rules[j].rhs.get(l) != self.rules[k].rhs.get(l) {
+                            if l > 1 {
+                                if let Some(pairs) = prefix_map.get_mut(&l) {
+                                    pairs.push((j, k));
+                                } else {
+                                    prefix_map.insert(l, vec![(j, k)]);
+                                }
+                            }
+                            
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            for (len, pairs) in prefix_map.iter().sorted_by(|(a, _), (b, _)| b.cmp(&a)) {
+                for (rule_a, rule_b) in pairs {
+                    if used_rules.insert(*rule_a) && used_rules.insert(*rule_b) {
+                        println!("factoring rule #{} and #{} (len = {})", rule_a, rule_b, len);
+                        
+                        //let nonterm = self.next_nonterminal();
+                    }
+                }
+            }
+        }
+    }
+    
+    /// Remove all indirect and direct left-recursions
+    /// from this grammar.
+    fn remove_left_recursions(&mut self) {
+        self.remove_duplicates();
+        self.left_factoring();
+        //TODO: LRNG
+        //TODO: LC(LR)
+    }
 
     /// Convert the CNF into GNF by repeatedly substituting
     /// the leftmost nonterminal until every rule starts
     /// with a terminal.
     fn sub_rhs_gnf(&mut self) {
-        /* Create a topological ordering of non-terminals */
-        let mut ordering = HashMap::<NonTerminal, usize>::new();
-        let mut cursor = 0;
-        let mut nodes = HashMap::<NonTerminal, NodeIndex>::new();
-        let mut graph = MatrixGraph::<usize, ()>::with_capacity(self.nonterminal_cursor);
-
+        //TODO: What ordering to choose ?
+        //let mut ordering = HashMap::<NonTerminal, usize>::new();
+        
+        //TODO: substitution of until GNF is met
+    }
+    
+    /// Check whether this grammar is in Greibach Normal Form.
+    pub(crate) fn is_gnf(&self) -> bool {
         for rule in &self.rules {
-            for var in &rule.rhs {
-                match var {
-                    Symbol::NonTerminal(nonterm) => {
-                        let src = if let Some(idx) = nodes.get(&rule.lhs) {
-                            idx.clone()
-                        } else {
-                            let idx = graph.add_node(rule.lhs.id());
-                            nodes.insert(rule.lhs.clone(), idx.clone());
-                            idx
-                        };
-
-                        let dst = if let Some(idx) = nodes.get(nonterm) {
-                            idx.clone()
-                        } else {
-                            let idx = graph.add_node(nonterm.id());
-                            nodes.insert(nonterm.clone(), idx.clone());
-                            idx
-                        };
-
-                        if !graph.has_edge(src.clone(), dst) {
-                            graph.add_edge(src.clone(), dst, ());
-                        }
-                    },
-                    _ => {},
+            if !rule.rhs[0].is_terminal() {
+                return false;
+            }
+            
+            for i in 1..rule.rhs.len() {
+                if !rule.rhs[i].is_non_terminal() {
+                    return false;
                 }
             }
         }
-
-        let root = *nodes.get(&self.entrypoint).unwrap();
-        let mut dfs = DepthFirstSearch::new(&graph, root);
-
-        while let Some(node) = dfs.next(&graph) {
-            let nonterm = NonTerminal(*graph.node_weight(node));
-            ordering.insert(nonterm, cursor);
-            cursor += 1;
-        }
-
-        println!("{:?}", ordering);
-
-        //TODO: substitution of until GNF is met
+        
+        true
     }
 
     /// Convert this context-free grammar into Greibach Normal Form.
     pub(crate) fn convert_to_gnf(&mut self) {
-        self.convert_to_cnf();
-        //self.remove_direct_left_recursions();
+        self.new_entrypoint();
+        self.isolate_terminals();
+        // The grammar specification disallows epsilon rules so we don't have to remove them here
+        self.eliminate_unit_rules();
+        self.remove_left_recursions();
         self.sub_rhs_gnf();
         self.remove_duplicates();
     }
@@ -731,6 +791,11 @@ impl ContextFreeGrammar {
     /// Access the production rules.
     pub(crate) fn rules(&self) -> &[ProductionRule] {
         &self.rules
+    }
+    
+    /// Access the entrypoint
+    pub(crate) fn entrypoint(&self) -> &NonTerminal {
+        &self.entrypoint
     }
 }
 
@@ -745,8 +810,8 @@ impl Display for ContextFreeGrammar {
         writeln!(f, "Entrypoint: {}", self.entrypoint)?;
         writeln!(f, "Rules:")?;
 
-        for rule in &self.rules {
-            write!(f, "  {} -> ", rule.lhs)?;
+        for (i, rule) in self.rules.iter().enumerate() {
+            write!(f, "  #{}: {} -> ", i, rule.lhs)?;
 
             for var in &rule.rhs {
                 match var {
