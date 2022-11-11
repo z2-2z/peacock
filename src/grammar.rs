@@ -654,7 +654,7 @@ impl ContextFreeGrammar {
     }
 
     /// Given a direct left-recursive rule `old_rule`, transform it
-    /// into multiple non-left-recursive rules.
+    /// into multiple non-left-recursive rules without producing epsilon-rules.
     fn resolve_left_recursion(&mut self, old_rule: ProductionRule) {
         let new_nonterm = self.next_nonterminal();
         let mut new_rule = ProductionRule {
@@ -696,49 +696,108 @@ impl ContextFreeGrammar {
         }
     }
     
-    /// Find common prefixes in the expansions of non-terminals.
-    fn left_factoring(&mut self) {
-        for i in 0..self.nonterminal_cursor {
-            let mut used_rules = HashSet::<usize>::new();
-            let mut prefix_map = HashMap::<usize, Vec<(usize, usize)>>::new();
-            
-            for j in 0..self.rules.len() {
-                for k in 0..self.rules.len() {
-                    if j == k || self.rules[j].lhs.id() != i || self.rules[k].lhs.id() != i {
-                        continue;
-                    }
-                    
-                    let max_len = std::cmp::max(
-                        self.rules[j].rhs.len(),
-                        self.rules[k].rhs.len()
-                    );
-                    
-                    for l in 0..max_len {
-                        if self.rules[j].rhs.get(l) != self.rules[k].rhs.get(l) {
-                            if l > 1 {
-                                if let Some(pairs) = prefix_map.get_mut(&l) {
-                                    pairs.push((j, k));
-                                } else {
-                                    prefix_map.insert(l, vec![(j, k)]);
-                                }
-                            }
-                            
-                            break;
-                        }
-                    }
-                }
+    /// Given a non-terminal A, calculate a matrix that indicates the
+    /// common prefix length for every pair of A's production rules.
+    fn get_prefix_matrix(&self, nonterm: usize) -> Vec<Vec<usize>> {
+        let mut matrix = Vec::<Vec<usize>>::new();
+        
+        for _ in 0..self.rules.len() {
+            matrix.push(vec![0; self.rules.len()]);
+        }
+        
+        for (i, src_rule) in self.rules.iter().enumerate() {
+            if src_rule.lhs.id() != nonterm {
+                continue;
             }
             
-            for (len, pairs) in prefix_map.iter().sorted_by(|(a, _), (b, _)| b.cmp(&a)) {
-                for (rule_a, rule_b) in pairs {
-                    if used_rules.insert(*rule_a) && used_rules.insert(*rule_b) {
-                        println!("factoring rule #{} and #{} (len = {})", rule_a, rule_b, len);
+            for (j, dst_rule) in self.rules.iter().enumerate() {
+                if j > i && dst_rule.lhs.id() == nonterm {
+                    let mut prefix_length = 0;
+                    let min_length = std::cmp::min(src_rule.rhs.len(), dst_rule.rhs.len()).saturating_sub(1);
+                    
+                    while prefix_length < min_length {
+                        if src_rule.rhs[prefix_length] != dst_rule.rhs[prefix_length] {
+                            break;
+                        }
                         
-                        //let nonterm = self.next_nonterminal();
+                        prefix_length += 1;
+                    }
+                    
+                    if prefix_length > 1 {
+                        matrix[i][j] = prefix_length;
                     }
                 }
             }
         }
+        
+        matrix
+    }
+    
+    /// Find common prefixes in the expansions of non-terminals.
+    fn left_factoring(&mut self) {
+        let old_cursor = self.nonterminal_cursor;
+        for nonterm in 0..old_cursor {
+            let mut del_rules = HashSet::<usize>::new();
+            let matrix = self.get_prefix_matrix(nonterm);
+            
+            println!("{}:", nonterm);
+            
+            for row in &matrix {
+                println!("  {:?}", row);
+            }
+            
+            for row in 0..matrix.len() {
+                /* Bucket columns by count */
+                let mut buckets = HashMap::<usize, Vec<usize>>::new();
+                
+                for col in 0..matrix[row].len() {
+                    let count = matrix[row][col];
+                    if count > 0 {
+                        if let Some(bucket) = buckets.get_mut(&count) {
+                            bucket.push(col);
+                        } else {
+                            buckets.insert(count, vec![col]);
+                        }
+                    }
+                }
+                
+                println!("  {}: {:?}", row, buckets);
+                
+                /* Create new rules with common prefixes */
+                for (prefix_length, cols) in buckets {
+                    let mut base_rule = ProductionRule {
+                        lhs: self.rules[row].lhs.clone(),
+                        rhs: self.rules[row].rhs[0..prefix_length].to_vec(),
+                    };
+                    let new_nonterm = self.next_nonterminal();
+                    
+                    base_rule.rhs.push(Symbol::NonTerminal(new_nonterm.clone()));
+                    self.rules.push(base_rule);
+                    
+                    let branch_rule = ProductionRule {
+                        lhs: new_nonterm.clone(),
+                        rhs: self.rules[row].rhs[prefix_length..].to_vec(),
+                    };
+                    self.rules.push(branch_rule);
+                    del_rules.insert(row);
+                    
+                    for col in cols {
+                        let branch_rule = ProductionRule {
+                            lhs: new_nonterm.clone(),
+                            rhs: self.rules[col].rhs[prefix_length..].to_vec(),
+                        };
+                        self.rules.push(branch_rule);
+                        del_rules.insert(col);
+                    }
+                }
+            }
+            
+            for &rule in del_rules.iter().sorted().rev() {
+                self.rules.remove(rule);
+            }
+        }
+        
+        //TODO: any existing algorithms on left-factoring ?
     }
     
     /// Remove all indirect and direct left-recursions

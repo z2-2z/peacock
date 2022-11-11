@@ -47,3 +47,5 @@ fn test_gnf() {
     */
     println!("{}", grammar);
 }
+
+//TODO: extra tests for eliminating left recursion
