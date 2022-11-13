@@ -15,19 +15,11 @@ use petgraph::{
 };
 use serde_json as json;
 
+use crate::grammar::error::GrammarError;
+
 /// Name of the non-terminal where generation should start
 pub(crate) const ENTRYPOINT: &str = "ENTRYPOINT";
 
-/// Errors that can appear while parsing and converting
-/// context free grammars
-#[derive(Debug)]
-pub(crate) enum GrammarError {
-    /// Parsing of the grammar failed
-    InvalidFormat(String),
-
-    /// The specified grammar contains infinite loops
-    ContainsCycles,
-}
 
 /// A non-terminal. While non-terminals are identified
 /// by names in the grammar we use integers for better
@@ -158,21 +150,7 @@ macro_rules! next_nonterminal {
 impl ContextFreeGrammar {
     /// Creates a context-free grammar from a grammar specified in a JSON file.
     /// For details on grammar syntax see the documentation in the repository.
-    pub(crate) fn from_json<P>(path: P) -> Result<Self, GrammarError>
-    where
-        P: AsRef<Path>,
-    {
-        let file = File::open(path).unwrap();
-        let reader = BufReader::new(file);
-        let reader = StripComments::with_settings(CommentSettings::c_style(), reader);
-
-        let grammar: json::Value = match json::from_reader(reader) {
-            Ok(grammar) => grammar,
-            Err(e) => {
-                return Err(GrammarError::InvalidFormat(format!("{}", e)));
-            },
-        };
-
+    pub(crate) fn from_json(grammar: &json::Value) -> Result<Self, GrammarError> {
         /* Verify that grammar has correct structure */
         let mut non_terminals = IndexMap::<String, usize>::new();
         let mut terminals = IndexMap::<String, usize>::new();
