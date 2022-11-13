@@ -1,7 +1,0 @@
-{
-    "<ENTRYPOINT>" : [
-        ["<ENTRYPOINT>", "<ENTRYPOINT>", "<ENTRYPOINT>", "'a'"],
-        ["'b'"],
-        ["'b'"]
-    ]
-}

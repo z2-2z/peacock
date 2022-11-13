@@ -1,11 +1,11 @@
-use std::path::Path;
 use std::fs::File;
 use std::io::BufReader;
+use std::path::Path;
 
-use serde_json as json;
 use json_comments::{CommentSettings, StripComments};
+use serde_json as json;
 
-use crate::grammar::error::GrammarError;
+use crate::error::Error;
 
 pub(crate) struct GrammarMerger {
     grammar: json::Value,
@@ -17,8 +17,8 @@ impl GrammarMerger {
             grammar: json::json!({}),
         }
     }
-    
-    pub(crate) fn merge<P>(mut self, path: P) -> Result<Self, GrammarError>
+
+    pub(crate) fn merge<P>(mut self, path: P) -> Result<Self, Error>
     where
         P: AsRef<Path>,
     {
@@ -29,31 +29,31 @@ impl GrammarMerger {
         let new_part: json::Value = match json::from_reader(reader) {
             Ok(new_part) => new_part,
             Err(e) => {
-                return Err(GrammarError::InvalidFormat(format!("{}", e)));
+                return Err(Error::InvalidGrammar(format!("{}", e)));
             },
         };
-        
+
         let parts = self.grammar.as_object_mut().unwrap();
-        
+
         match new_part {
             json::Value::Object(map) => {
                 for (key, value) in map {
                     if parts.contains_key(&key) {
-                        return Err(GrammarError::MergeConflict(format!("Two grammars use the same key: {}", key)));
+                        return Err(Error::GrammarMergeConflict(format!("Two grammars use the same key: {}", key)));
                     }
-                    
+
                     parts.insert(key, value);
                 }
             },
             _ => {
-                return Err(GrammarError::InvalidFormat("Grammar must be an object".to_string()));
+                return Err(Error::InvalidGrammar("Grammar must be an object".to_string()));
             },
         }
-        
+
         Ok(self)
     }
-    
-    pub(crate) fn grammar(&self) -> &json::Value {
+
+    pub(crate) fn dict(&self) -> &json::Value {
         &self.grammar
     }
 }

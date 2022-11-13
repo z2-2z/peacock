@@ -1,25 +1,20 @@
 use std::fmt::{Display, Formatter, Result as FmtResult};
-use std::fs::File;
 use std::hash::{BuildHasher, Hash, Hasher};
-use std::io::BufReader;
-use std::path::Path;
 
-use itertools::Itertools;
 use ahash::{AHashMap as HashMap, AHashSet as HashSet, RandomState};
 use indexmap::IndexMap;
-use json_comments::{CommentSettings, StripComments};
+use itertools::Itertools;
 use petgraph::{
     algo::is_cyclic_directed,
     matrix_graph::{MatrixGraph, NodeIndex},
-    visit::{Bfs as BreadthFirstSearch, Dfs as DepthFirstSearch},
+    visit::Bfs as BreadthFirstSearch,
 };
 use serde_json as json;
 
-use crate::grammar::error::GrammarError;
+use crate::error::Error;
 
 /// Name of the non-terminal where generation should start
 pub(crate) const ENTRYPOINT: &str = "ENTRYPOINT";
-
 
 /// A non-terminal. While non-terminals are identified
 /// by names in the grammar we use integers for better
@@ -62,6 +57,7 @@ impl Symbol {
         }
     }
 
+    #[cfg(test)]
     fn is_terminal(&self) -> bool {
         match self {
             Symbol::Terminal(_) => true,
@@ -82,17 +78,6 @@ impl ProductionRule {
         let mut hasher = RandomState::with_seed(0).build_hasher();
         self.hash(&mut hasher);
         hasher.finish()
-    }
-
-    fn is_left_recursive(&self) -> bool {
-        if self.rhs.len() > 1 {
-            match &self.rhs[0] {
-                Symbol::NonTerminal(nonterm) => nonterm.id() == self.lhs.id(),
-                _ => false,
-            }
-        } else {
-            false
-        }
     }
 }
 
@@ -150,7 +135,7 @@ macro_rules! next_nonterminal {
 impl ContextFreeGrammar {
     /// Creates a context-free grammar from a grammar specified in a JSON file.
     /// For details on grammar syntax see the documentation in the repository.
-    pub(crate) fn from_json(grammar: &json::Value) -> Result<Self, GrammarError> {
+    pub(crate) fn from_dict(grammar: &json::Value) -> Result<Self, Error> {
         /* Verify that grammar has correct structure */
         let mut non_terminals = IndexMap::<String, usize>::new();
         let mut terminals = IndexMap::<String, usize>::new();
@@ -167,31 +152,31 @@ impl ContextFreeGrammar {
                                 non_terminals.insert(name.to_string(), id);
                             },
                             SymbolString::Terminal(_) => {
-                                return Err(GrammarError::InvalidFormat("Only a single non-terminal is allowed as the left-hand side of a production rule".to_string()));
+                                return Err(Error::InvalidGrammar("Only a single non-terminal is allowed as the left-hand side of a production rule".to_string()));
                             },
                         }
                     } else {
-                        return Err(GrammarError::InvalidFormat(format!("Key isn't a non-terminal: '{}'", key)));
+                        return Err(Error::InvalidGrammar(format!("Key isn't a non-terminal: '{}'", key)));
                     }
 
                     match value {
                         json::Value::Array(choices) => {
                             if choices.is_empty() {
-                                return Err(GrammarError::InvalidFormat(format!("Right-hand side of key {} is empty", key)));
+                                return Err(Error::InvalidGrammar(format!("Right-hand side of key {} is empty", key)));
                             }
 
                             for choice in choices {
                                 match choice {
                                     json::Value::Array(variables) => {
                                         if variables.is_empty() {
-                                            return Err(GrammarError::InvalidFormat("Empty sequences are not allowed".to_string()));
+                                            return Err(Error::InvalidGrammar("Empty sequences are not allowed".to_string()));
                                         }
 
                                         for variable in variables {
                                             if let Some(variable) = variable.as_str() {
                                                 match SymbolString::parse(variable) {
                                                     None => {
-                                                        return Err(GrammarError::InvalidFormat(format!("String on the right-hand side of key {} is neither a terminal nor a non-terminal", key)));
+                                                        return Err(Error::InvalidGrammar(format!("String on the right-hand side of key {} is neither a terminal nor a non-terminal", key)));
                                                     },
                                                     Some(SymbolString::Terminal(term)) => {
                                                         if !terminals.contains_key(term) {
@@ -202,29 +187,29 @@ impl ContextFreeGrammar {
                                                     _ => {},
                                                 }
                                             } else {
-                                                return Err(GrammarError::InvalidFormat(format!("Nested list must contain strings on the right-hand side of key {}", key)));
+                                                return Err(Error::InvalidGrammar(format!("Nested list must contain strings on the right-hand side of key {}", key)));
                                             }
                                         }
                                     },
                                     _ => {
-                                        return Err(GrammarError::InvalidFormat(format!("Right-hand side of key {} must be a list of lists", key)));
+                                        return Err(Error::InvalidGrammar(format!("Right-hand side of key {} must be a list of lists", key)));
                                     },
                                 }
                             }
                         },
                         _ => {
-                            return Err(GrammarError::InvalidFormat(format!("Right-hand side of key {} must be a list of lists", key)));
+                            return Err(Error::InvalidGrammar(format!("Right-hand side of key {} must be a list of lists", key)));
                         },
                     }
                 }
             },
             _ => {
-                return Err(GrammarError::InvalidFormat("Grammar must be an object".to_string()));
+                return Err(Error::InvalidGrammar("Grammar must be an object".to_string()));
             },
         }
 
         if !non_terminals.contains_key(ENTRYPOINT) {
-            return Err(GrammarError::InvalidFormat(format!("Grammar does not contain an <{}>", ENTRYPOINT)));
+            return Err(Error::InvalidGrammar(format!("Grammar does not contain an <{}>", ENTRYPOINT)));
         }
 
         /* Construct production rules */
@@ -250,7 +235,7 @@ impl ContextFreeGrammar {
                                     if let Some(id) = non_terminals.get(value) {
                                         Symbol::NonTerminal(NonTerminal(*id))
                                     } else {
-                                        return Err(GrammarError::InvalidFormat(format!("Non-terminal '{}' referenced but not defined", value)));
+                                        return Err(Error::InvalidGrammar(format!("Non-terminal '{}' referenced but not defined", value)));
                                     }
                                 },
                             };
@@ -287,7 +272,7 @@ impl ContextFreeGrammar {
     }
 
     /// Check if the current context-free grammar contains infinite loops.
-    fn check_cycles(&self) -> Result<(), GrammarError> {
+    fn check_cycles(&self) -> Result<(), Error> {
         /* First, identify non-terminals that would terminate a cycle */
         let mut terminators = HashSet::<NonTerminal>::new();
 
@@ -344,7 +329,7 @@ impl ContextFreeGrammar {
 
         /* Run a cycle detection algorithm from the graph library */
         if is_cyclic_directed(&graph) {
-            Err(GrammarError::ContainsCycles)
+            Err(Error::GrammarContainsCycles)
         } else {
             Ok(())
         }
@@ -429,12 +414,13 @@ impl ContextFreeGrammar {
     fn new_entrypoint(&mut self) {
         let mut need_new = false;
 
-        for rule in &self.rules {
+        'next_rule: for rule in &self.rules {
             for var in &rule.rhs {
                 match var {
                     Symbol::NonTerminal(nonterm) => {
                         if nonterm == &self.entrypoint {
                             need_new = true;
+                            break 'next_rule;
                         }
                     },
                     _ => {},
@@ -452,32 +438,6 @@ impl ContextFreeGrammar {
             });
 
             self.entrypoint = new_entrypoint;
-        }
-
-        /* Make sure that the entrypoint always has ID 0 */
-        if self.entrypoint.id() != 0 {
-            for rule in &mut self.rules {
-                if rule.lhs.id() == 0 {
-                    rule.lhs = self.entrypoint.clone();
-                } else if rule.lhs.id() == self.entrypoint.id() {
-                    rule.lhs = NonTerminal(0);
-                }
-                
-                for var in &mut rule.rhs {
-                    match var {
-                        Symbol::NonTerminal(nonterm) => {
-                            if nonterm.id() == 0 {
-                                *nonterm = self.entrypoint.clone();
-                            } else if nonterm.id() == self.entrypoint.id() {
-                                *nonterm = NonTerminal(0);
-                            }
-                        },
-                        _ => {},
-                    }
-                }
-            }
-            
-            self.entrypoint = NonTerminal(0);
         }
     }
 
@@ -516,36 +476,6 @@ impl ContextFreeGrammar {
                 lhs: nonterm,
                 rhs: vec![Symbol::Terminal(term)],
             });
-        }
-    }
-
-    /// Make sure that not more than 2 non-terminals appear
-    /// on the right-hand side of any production rule.
-    fn bin_rhs_cnf(&mut self) {
-        let old_len = self.rules.len();
-
-        for i in 0..old_len {
-            if self.rules[i].rhs.len() <= 2 {
-                continue;
-            }
-
-            let rule = self.rules.remove(i);
-            let mut rules = vec![rule];
-
-            while rules.last().unwrap().rhs.len() > 2 {
-                let rule = rules.last_mut().unwrap();
-
-                let rem_vars = rule.rhs.split_off(1);
-                let nonterm = self.next_nonterminal();
-                rule.rhs.push(Symbol::NonTerminal(nonterm.clone()));
-
-                rules.push(ProductionRule {
-                    lhs: nonterm,
-                    rhs: rem_vars,
-                });
-            }
-
-            self.rules.append(&mut rules);
         }
     }
 
@@ -602,37 +532,9 @@ impl ContextFreeGrammar {
         }
     }
 
-    /// Convert this context-free grammar into Chomsky Normal Form.
-    pub(crate) fn convert_to_cnf(&mut self) {
-        self.new_entrypoint();
-        self.isolate_terminals();
-        self.bin_rhs_cnf();
-        // The grammar specification disallows epsilon rules so we don't have to remove them here
-        self.eliminate_unit_rules();
-        self.remove_duplicates();
-    }
-
-    /// Check whether this context-free grammar is in Chomsky Normal Form.
-    pub(crate) fn is_cnf(&self) -> bool {
-        for rule in &self.rules {
-            if rule.rhs.len() == 1 {
-                if rule.rhs[0].is_non_terminal() {
-                    return false;
-                }
-            } else if rule.rhs.len() == 2 {
-                if rule.rhs[0].is_terminal() || rule.rhs[1].is_terminal() {
-                    return false;
-                }
-            } else {
-                return false;
-            }
-        }
-
-        true
-    }
-
     /// Given a direct left-recursive rule `old_rule`, transform it
     /// into multiple non-left-recursive rules without producing epsilon-rules.
+    /*
     fn resolve_left_recursion(&mut self, old_rule: ProductionRule) {
         let new_nonterm = self.next_nonterminal();
         let mut new_rule = ProductionRule {
@@ -656,78 +558,62 @@ impl ContextFreeGrammar {
             }
         }
     }
+    */
 
-    /// Break up direct left-recursive rules in the grammar.
-    fn remove_direct_left_recursions(&mut self) {
-        let mut i = 0;
-        let mut old_len = self.rules.len();
-
-        while i < old_len {
-            if self.rules[i].is_left_recursive() {
-                let rule = self.rules.remove(i);
-                old_len -= 1;
-                self.resolve_left_recursion(rule);
-                continue;
-            }
-
-            i += 1;
-        }
-    }
-    
     /// Given a non-terminal A, calculate a matrix that indicates the
     /// common prefix length for every pair of A's production rules.
     fn get_prefix_matrix(&self, nonterm: usize) -> Vec<Vec<usize>> {
         let mut matrix = Vec::<Vec<usize>>::new();
-        
+
         for _ in 0..self.rules.len() {
             matrix.push(vec![0; self.rules.len()]);
         }
-        
+
         for (i, src_rule) in self.rules.iter().enumerate() {
             if src_rule.lhs.id() != nonterm {
                 continue;
             }
-            
+
             for (j, dst_rule) in self.rules.iter().enumerate() {
                 if j > i && dst_rule.lhs.id() == nonterm {
                     let mut prefix_length = 0;
                     let min_length = std::cmp::min(src_rule.rhs.len(), dst_rule.rhs.len()).saturating_sub(1);
-                    
+
                     while prefix_length < min_length {
                         if src_rule.rhs[prefix_length] != dst_rule.rhs[prefix_length] {
                             break;
                         }
-                        
+
                         prefix_length += 1;
                     }
-                    
+
                     if prefix_length > 1 {
                         matrix[i][j] = prefix_length;
                     }
                 }
             }
         }
-        
+
         matrix
     }
-    
+
     /// Find common prefixes in the expansions of non-terminals.
     fn left_factoring(&mut self) {
         let old_cursor = self.nonterminal_cursor;
         for nonterm in 0..old_cursor {
             let mut del_rules = HashSet::<usize>::new();
             let matrix = self.get_prefix_matrix(nonterm);
-            
+
             println!("{}:", nonterm);
-            
+
             for row in &matrix {
                 println!("  {:?}", row);
             }
-            
+
             for row in 0..matrix.len() {
                 /* Bucket columns by count */
                 let mut buckets = HashMap::<usize, Vec<usize>>::new();
-                
+
                 for col in 0..matrix[row].len() {
                     let count = matrix[row][col];
                     if count > 0 {
@@ -738,9 +624,9 @@ impl ContextFreeGrammar {
                         }
                     }
                 }
-                
+
                 println!("  {}: {:?}", row, buckets);
-                
+
                 /* Create new rules with common prefixes */
                 for (prefix_length, cols) in buckets {
                     let mut base_rule = ProductionRule {
@@ -748,17 +634,17 @@ impl ContextFreeGrammar {
                         rhs: self.rules[row].rhs[0..prefix_length].to_vec(),
                     };
                     let new_nonterm = self.next_nonterminal();
-                    
+
                     base_rule.rhs.push(Symbol::NonTerminal(new_nonterm.clone()));
                     self.rules.push(base_rule);
-                    
+
                     let branch_rule = ProductionRule {
                         lhs: new_nonterm.clone(),
                         rhs: self.rules[row].rhs[prefix_length..].to_vec(),
                     };
                     self.rules.push(branch_rule);
                     del_rules.insert(row);
-                    
+
                     for col in cols {
                         let branch_rule = ProductionRule {
                             lhs: new_nonterm.clone(),
@@ -769,15 +655,15 @@ impl ContextFreeGrammar {
                     }
                 }
             }
-            
+
             for &rule in del_rules.iter().sorted().rev() {
                 self.rules.remove(rule);
             }
         }
-        
+
         //TODO: any existing algorithms on left-factoring ?
     }
-    
+
     /// Remove all indirect and direct left-recursions
     /// from this grammar.
     fn remove_left_recursions(&mut self) {
@@ -793,24 +679,25 @@ impl ContextFreeGrammar {
     fn sub_rhs_gnf(&mut self) {
         //TODO: What ordering to choose ?
         //let mut ordering = HashMap::<NonTerminal, usize>::new();
-        
+
         //TODO: substitution of until GNF is met
     }
-    
+
     /// Check whether this grammar is in Greibach Normal Form.
+    #[cfg(test)]
     pub(crate) fn is_gnf(&self) -> bool {
         for rule in &self.rules {
             if !rule.rhs[0].is_terminal() {
                 return false;
             }
-            
+
             for i in 1..rule.rhs.len() {
                 if !rule.rhs[i].is_non_terminal() {
                     return false;
                 }
             }
         }
-        
+
         true
     }
 
@@ -825,14 +712,10 @@ impl ContextFreeGrammar {
         self.remove_duplicates();
     }
 
-    /// Access the production rules.
+    /// Access the rules
+    #[cfg(test)]
     pub(crate) fn rules(&self) -> &[ProductionRule] {
         &self.rules
-    }
-    
-    /// Access the entrypoint
-    pub(crate) fn entrypoint(&self) -> &NonTerminal {
-        &self.entrypoint
     }
 }
 
