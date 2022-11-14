@@ -64,11 +64,15 @@ fn test_merger() {
 fn test_left_factoring() {
     let merger = GrammarMerger::new().merge("src/tests/grammars/left_factoring.json").unwrap();
     let mut grammar = ContextFreeGrammar::from_dict(merger.dict()).unwrap();
-    grammar.left_factoring();
-    
-    let old_len = grammar.rules().len();
-    grammar.left_factoring();
-    assert_eq!(old_len, grammar.rules().len());
     
     println!("{}", grammar);
+    
+    loop {
+        let old_len = grammar.rules().len();
+        grammar.left_factoring();
+        println!("{}", grammar);
+        if old_len == grammar.rules().len() {
+            break;
+        }
+    }
 }

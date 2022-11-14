@@ -57,7 +57,6 @@ impl Symbol {
         }
     }
 
-    #[cfg(test)]
     fn is_terminal(&self) -> bool {
         match self {
             Symbol::Terminal(_) => true,
@@ -393,10 +392,9 @@ impl ContextFreeGrammar {
 
             if !hashes.insert(rule_hash) {
                 self.rules.remove(i);
-                continue;
+            } else {
+                i += 1;
             }
-
-            i += 1;
         }
     }
 
@@ -447,6 +445,19 @@ impl ContextFreeGrammar {
     fn isolate_terminals(&mut self) {
         let mut assoc = HashMap::<Terminal, NonTerminal>::new();
 
+        /* First identify known isolated terminals */
+        for rule in &self.rules {
+            if rule.rhs.len() == 1 {
+                match &rule.rhs[0] {
+                    Symbol::Terminal(term) => {
+                        assoc.insert(term.clone(), rule.lhs.clone());
+                    },
+                    _ => {},
+                }
+            }
+        }
+        
+        /* Then isolate new terminals */
         for rule in &mut self.rules {
             if rule.rhs.len() == 1 {
                 continue;
@@ -666,13 +677,26 @@ impl ContextFreeGrammar {
             self.rules.remove(rule);
         }
     }
+    
+    /// Group non-left-recursive non-terminals together
+    fn nlrg(&mut self) {
+        //TODO
+    }
 
     /// Remove all indirect and direct left-recursions
     /// from this grammar.
     fn remove_left_recursions(&mut self) {
         self.remove_duplicates();
-        self.left_factoring();
-        //TODO: LRNG
+        
+        loop {
+            let old_len = self.rules.len();
+            self.left_factoring();
+            if old_len == self.rules.len() {
+                break;
+            }
+        }
+        
+        self.nlrg();
         //TODO: LC(LR)
     }
 
@@ -707,10 +731,10 @@ impl ContextFreeGrammar {
     /// Convert this context-free grammar into Greibach Normal Form.
     pub(crate) fn convert_to_gnf(&mut self) {
         self.new_entrypoint();
+        self.remove_left_recursions();
         self.isolate_terminals();
         // The grammar specification disallows epsilon rules so we don't have to remove them here
         self.eliminate_unit_rules();
-        self.remove_left_recursions();
         self.sub_rhs_gnf();
         self.remove_duplicates();
     }
