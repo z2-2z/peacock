@@ -562,16 +562,18 @@ impl ContextFreeGrammar {
 
     /// Given a non-terminal A, calculate a matrix that indicates the
     /// common prefix length for every pair of A's production rules.
-    fn get_prefix_matrix(&self, nonterm: usize) -> Vec<Vec<usize>> {
+    fn get_prefix_matrix(&self, nonterm: usize, num_rules: usize) -> Vec<Vec<usize>> {
         let mut matrix = Vec::<Vec<usize>>::new();
 
-        for _ in 0..self.rules.len() {
-            matrix.push(vec![0; self.rules.len()]);
+        for _ in 0..num_rules {
+            matrix.push(vec![0; num_rules]);
         }
 
         for (i, src_rule) in self.rules.iter().enumerate() {
             if src_rule.lhs.id() != nonterm {
                 continue;
+            } else if i >= num_rules {
+                break;
             }
 
             for (j, dst_rule) in self.rules.iter().enumerate() {
@@ -598,25 +600,26 @@ impl ContextFreeGrammar {
     }
 
     /// Find common prefixes in the expansions of non-terminals.
-    fn left_factoring(&mut self) {
+    pub(crate) fn left_factoring(&mut self) {
         let old_cursor = self.nonterminal_cursor;
+        let old_len = self.rules.len();
+        let mut del_rules = HashSet::<usize>::new();
+        
         for nonterm in 0..old_cursor {
-            let mut del_rules = HashSet::<usize>::new();
-            let matrix = self.get_prefix_matrix(nonterm);
-
-            println!("{}:", nonterm);
-
-            for row in &matrix {
-                println!("  {:?}", row);
-            }
-
+            let matrix = self.get_prefix_matrix(nonterm, old_len);
+            
             for row in 0..matrix.len() {
+                if del_rules.contains(&row) {
+                    continue;
+                }
+                
                 /* Bucket columns by count */
                 let mut buckets = HashMap::<usize, Vec<usize>>::new();
 
                 for col in 0..matrix[row].len() {
                     let count = matrix[row][col];
-                    if count > 0 {
+                    
+                    if count > 1 && !del_rules.contains(&col) {
                         if let Some(bucket) = buckets.get_mut(&count) {
                             bucket.push(col);
                         } else {
@@ -625,10 +628,12 @@ impl ContextFreeGrammar {
                     }
                 }
 
-                println!("  {}: {:?}", row, buckets);
-
                 /* Create new rules with common prefixes */
                 for (prefix_length, cols) in buckets {
+                    if cols.is_empty() {
+                        continue;
+                    }
+                    
                     let mut base_rule = ProductionRule {
                         lhs: self.rules[row].lhs.clone(),
                         rhs: self.rules[row].rhs[0..prefix_length].to_vec(),
@@ -655,13 +660,11 @@ impl ContextFreeGrammar {
                     }
                 }
             }
-
-            for &rule in del_rules.iter().sorted().rev() {
-                self.rules.remove(rule);
-            }
         }
 
-        //TODO: any existing algorithms on left-factoring ?
+        for &rule in del_rules.iter().sorted().rev() {
+            self.rules.remove(rule);
+        }
     }
 
     /// Remove all indirect and direct left-recursions

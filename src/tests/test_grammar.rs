@@ -60,4 +60,15 @@ fn test_merger() {
     println!("{}", ContextFreeGrammar::from_dict(merger.dict()).unwrap());
 }
 
-//TODO: extra tests for eliminating left recursion
+#[test]
+fn test_left_factoring() {
+    let merger = GrammarMerger::new().merge("src/tests/grammars/left_factoring.json").unwrap();
+    let mut grammar = ContextFreeGrammar::from_dict(merger.dict()).unwrap();
+    grammar.left_factoring();
+    
+    let old_len = grammar.rules().len();
+    grammar.left_factoring();
+    assert_eq!(old_len, grammar.rules().len());
+    
+    println!("{}", grammar);
+}
