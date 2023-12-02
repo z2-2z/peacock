@@ -87,6 +87,16 @@ fn is_mixed(rhs: &[Symbol]) -> bool {
     terms & non_terms
 }
 
+fn is_only_non_terminals(rhs: &[Symbol]) -> bool {
+    for symbol in rhs {
+        if symbol.is_terminal() {
+            return false;
+        }
+    }
+    
+    true
+}
+
 pub struct ContextFreeGrammar {
     rules: Vec<ProductionRule>,
     entrypoint: NonTerminal,
@@ -234,6 +244,32 @@ impl ContextFreeGrammar {
                 nonterm,
                 vec![Symbol::Terminal(term)],
             ));
+        }
+    }
+    
+    pub(crate) fn break_rules(&mut self) {
+        let mut nonterm_cursor = 0;
+        let mut i = 0;
+        
+        while i < self.rules.len() {
+            let rule = &mut self.rules[i];
+            
+            if rule.rhs().len() > 2 && is_only_non_terminals(rule.rhs()) {
+                let len = rule.rhs().len() - 1;
+                let symbols: Vec<Symbol> = rule.rhs.drain(0..len).collect();
+                
+                let nonterm = NonTerminal(format!("(break_rules:{})", nonterm_cursor));
+                nonterm_cursor += 1;
+                
+                rule.rhs.insert(0, Symbol::NonTerminal(nonterm.clone()));
+                
+                self.rules.push(ProductionRule {
+                    lhs: nonterm,
+                    rhs: symbols,
+                });
+            }
+            
+            i += 1;
         }
     }
 }

@@ -79,8 +79,8 @@ impl GrammarBuilder {
         cfg.remove_unit_rules();
         cfg.remove_unused_rules();
         cfg.remove_mixed_rules();
+        cfg.break_rules();
         
-        // break rules with more than two non-terminals
         // convert to GNF via expansion
         // set new entrypoint
         
