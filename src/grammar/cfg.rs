@@ -175,6 +175,35 @@ impl ContextFreeGrammar {
             }
         }
     }
+    
+    pub(crate) fn remove_unit_rules(&mut self) {
+        let mut i = 0;
+        
+        while i < self.rules.len() {
+            let rule = &mut self.rules[i];
+            
+            if rule.rhs().len() == 1 && rule.rhs()[0].is_non_terminal() {
+                let Symbol::NonTerminal(to_expand) = rule.rhs.remove(0) else { unreachable!() };
+                let mut new_rules = Vec::new();
+                let lhs = rule.lhs.clone();
+                
+                for other_rule in &self.rules {
+                    if to_expand.id() == other_rule.lhs().id() {
+                        new_rules.push(ProductionRule {
+                            lhs: lhs.clone(),
+                            rhs: other_rule.rhs.clone(),
+                        });
+                    }
+                }
+                
+                self.rules.remove(i);
+                self.rules.append(&mut new_rules);
+            } else {
+                i += 1;
+            }
+        }
+            
+    }
 }
 
 #[cfg(test)]
@@ -199,6 +228,18 @@ mod tests {
             .unwrap();
         
         assert_eq!(cfg.rules().len(), 2);
+        
+        println!("{:#?}", cfg.rules());
+    }
+    
+    #[test]
+    fn test_unit_rules() {
+        let cfg = ContextFreeGrammar::builder()
+            .peacock_grammar("test-data/grammars/unit_rules.json").unwrap()
+            .build()
+            .unwrap();
+        
+        assert_eq!(cfg.rules().len(), 4);
         
         println!("{:#?}", cfg.rules());
     }

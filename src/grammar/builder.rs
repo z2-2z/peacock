@@ -76,9 +76,9 @@ impl GrammarBuilder {
         
         cfg.concatenate_terminals();
         cfg.remove_duplicate_rules();
+        cfg.remove_unit_rules();
         cfg.remove_unused_rules();
         
-        // remove unit production rules A -> B
         // remove mixed production rules
         // break rules with more than two non-terminals
         // convert to GNF via expansion
