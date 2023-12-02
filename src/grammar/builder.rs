@@ -81,8 +81,7 @@ impl GrammarBuilder {
         cfg.remove_mixed_rules();
         cfg.break_rules();
         cfg.convert_to_gnf();
-        
-        // set new entrypoint
+        cfg.set_new_entrypoint();
         
         Ok(cfg)
     }
