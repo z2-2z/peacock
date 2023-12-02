@@ -272,6 +272,33 @@ impl ContextFreeGrammar {
             i += 1;
         }
     }
+    
+    pub(crate) fn convert_to_gnf(&mut self) {
+        let mut i = 0;
+        
+        while i < self.rules.len() {
+            if self.rules[i].rhs()[0].is_non_terminal() {
+                let mut new_rules = Vec::new();
+                let mut old_rule = self.rules.remove(i);
+                let Symbol::NonTerminal(nonterm) = old_rule.rhs.remove(0) else { unreachable!() };
+                
+                for other_rule in &self.rules {
+                    if other_rule.lhs().id() == nonterm.id() {
+                        let mut new_symbols = other_rule.rhs.clone();
+                        new_symbols.extend_from_slice(old_rule.rhs());
+                        new_rules.push(ProductionRule {
+                            lhs: old_rule.lhs().clone(),
+                            rhs: new_symbols,
+                        });
+                    }
+                }
+                
+                self.rules.append(&mut new_rules);
+            } else {
+                i += 1;
+            }
+        }
+    }
 }
 
 #[cfg(test)]
