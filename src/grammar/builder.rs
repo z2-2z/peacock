@@ -54,7 +54,7 @@ impl GrammarBuilder {
 impl GrammarBuilder {
     /// Parse a single JSON file with peacock's grammar format.
     /// TODO: explain peacock format
-    pub fn json<P: AsRef<Path>>(mut self, path: P) -> Result<Self, ParsingError> {
+    pub fn peacock_grammar<P: AsRef<Path>>(mut self, path: P) -> Result<Self, ParsingError> {
         let mut new_rules = parse_json(path.as_ref())?;
         self.rules.append(&mut new_rules);
         Ok(self)
@@ -74,6 +74,15 @@ impl GrammarBuilder {
             NonTerminal::new(ENTRYPOINT),
         );
         
+        cfg.remove_duplicate_rules();
+        cfg.remove_unused_rules();
+        
+        // remove unused rules
+        // remove unit production rules A -> B
+        // remove mixed production rules
+        // break rules with more than two non-terminals
+        // convert to GNF via expansion
+        
         Ok(cfg)
     }
 }
@@ -86,7 +95,7 @@ mod tests {
     #[should_panic]
     fn test_missing_refs() {
         ContextFreeGrammar::builder()
-            .json("test-data/grammars/invalid-refs.json").unwrap()
+            .peacock_grammar("test-data/grammars/invalid-refs.json").unwrap()
             .build()
             .unwrap();
     }

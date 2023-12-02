@@ -1,0 +1,22 @@
+{
+    // COMPONENT 1
+    "<ENTRYPOINT>": [
+        ["<A>", "<B>"]
+    ],
+    "<A>": [
+        ["a", "<ENTRYPOINT>"],
+        ["a"]
+    ],
+    "<B>": [
+        ["b", "<ENTRYPOINT>"],
+        ["b"]
+    ],
+    
+    // COMPONENT 2
+    "<C>": [
+        ["<D>"]
+    ],
+    "<D>": [
+        ["<C>"]
+    ]
+}
