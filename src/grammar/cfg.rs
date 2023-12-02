@@ -75,6 +75,18 @@ impl ProductionRule {
     }
 }
 
+fn is_mixed(rhs: &[Symbol]) -> bool {
+    let mut terms = false;
+    let mut non_terms = false;
+    
+    for symbol in rhs {
+        terms |= symbol.is_terminal();
+        non_terms |= symbol.is_non_terminal();
+    }
+    
+    terms & non_terms
+}
+
 pub struct ContextFreeGrammar {
     rules: Vec<ProductionRule>,
     entrypoint: NonTerminal,
@@ -202,6 +214,28 @@ impl ContextFreeGrammar {
             }
         }
     }
+    
+    pub(crate) fn remove_mixed_rules(&mut self) {
+        let mut terms = HashMap::new();
+        
+        for rule in &mut self.rules {            
+            if is_mixed(rule.rhs()) {
+                for j in 0..rule.rhs().len() {
+                    if let Symbol::Terminal(term) = &rule.rhs()[j] {
+                        let non_term = terms.entry(term.clone()).or_insert_with(|| NonTerminal(format!("(term:{})", term.content()))).clone();
+                        rule.rhs[j] = Symbol::NonTerminal(non_term);
+                    }
+                }
+            }
+        }
+        
+        for (term, nonterm) in terms {
+            self.rules.push(ProductionRule::new(
+                nonterm,
+                vec![Symbol::Terminal(term)],
+            ));
+        }
+    }
 }
 
 #[cfg(test)]
@@ -247,6 +281,17 @@ mod tests {
     fn test_recursion() {
         let cfg = ContextFreeGrammar::builder()
             .peacock_grammar("test-data/grammars/recursion.json").unwrap()
+            .build()
+            .unwrap();
+        
+        println!("{:#?}", cfg.rules());
+    }
+    
+    #[test]
+    #[ignore]
+    fn test_mixed_rules() {
+        let cfg = ContextFreeGrammar::builder()
+            .peacock_grammar("test-data/grammars/mixed_rules.json").unwrap()
             .build()
             .unwrap();
         
