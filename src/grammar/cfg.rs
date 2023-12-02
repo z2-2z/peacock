@@ -36,6 +36,18 @@ pub enum Symbol {
     NonTerminal(NonTerminal),
 }
 
+impl Symbol {
+    #[inline]
+    pub fn is_terminal(&self) -> bool {
+        matches!(self, Symbol::Terminal(_))
+    }
+    
+    #[inline]
+    pub fn is_non_terminal(&self) -> bool {
+        matches!(self, Symbol::NonTerminal(_))
+    }
+}
+
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct ProductionRule {
     lhs: NonTerminal,
@@ -90,6 +102,22 @@ impl ContextFreeGrammar {
 }
 
 impl ContextFreeGrammar {
+    pub(crate) fn concatenate_terminals(&mut self) {
+        for rule in &mut self.rules {
+            let mut i = 0;
+            
+            while i + 1 < rule.rhs.len() {
+                if rule.rhs[i].is_terminal() && rule.rhs[i + 1].is_terminal() {
+                    let Symbol::Terminal(second) = rule.rhs.remove(i + 1) else { unreachable!() };
+                    let Symbol::Terminal(first) = &mut rule.rhs[i] else { unreachable!() };
+                    first.0.push_str(second.content());
+                } else {
+                    i += 1;
+                }
+            }
+        }
+    }
+    
     pub(crate) fn remove_duplicate_rules(&mut self) {
         let mut hashes = HashSet::with_capacity(self.rules.len());
         let mut i = 0;
@@ -170,6 +198,8 @@ mod tests {
             .build()
             .unwrap();
         
-        assert_eq!(cfg.rules().len(), 3);
+        assert_eq!(cfg.rules().len(), 2);
+        
+        println!("{:#?}", cfg.rules());
     }
 }
