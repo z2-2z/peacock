@@ -21,3 +21,12 @@ impl std::fmt::Display for ParsingError {
         write!(f, "ParsingError in {}: {}", self.path.display(), self.msg)
     }
 }
+
+#[derive(Debug, Error)]
+pub enum GrammarError {
+    #[error("The grammar does not contain an explicit entrypoint")]
+    MissingEntrypoint,
+    
+    #[error("The non-terminal '{0}' is referenced but never defined")]
+    MissingNonTerminal(String),
+}
