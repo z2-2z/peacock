@@ -1,9 +1,9 @@
-mod automaton;
-mod error;
 mod grammar;
 
-#[cfg(test)]
-mod tests;
+pub(crate) mod parser;
 
-pub use automaton::Automaton;
-pub use error::Error;
+pub mod error;
+pub use grammar::{
+    builder::GrammarBuilder,
+    cfg::*,
+};

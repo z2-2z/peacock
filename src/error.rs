@@ -1,13 +1,23 @@
-/// Errors that can appear while parsing and converting
-/// context free grammars
-#[derive(Debug)]
-pub enum Error {
-    /// Parsing of the grammar failed
-    InvalidGrammar(String),
+use std::path::PathBuf;
+use thiserror::Error;
 
-    /// The specified grammar contains infinite loops
-    GrammarContainsCycles,
+#[derive(Debug, Error)]
+pub struct ParsingError {
+    path: PathBuf,
+    msg: String,
+}
 
-    /// Merging grammars failed
-    GrammarMergeConflict(String),
+impl ParsingError {
+    pub(crate) fn new<P: Into<PathBuf>, S: Into<String>>(path: P, msg: S) -> Self {
+        Self {
+            path: path.into(),
+            msg: msg.into(),
+        }
+    }
+}
+
+impl std::fmt::Display for ParsingError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ParsingError in {}: {}", self.path.display(), self.msg)
+    }
 }

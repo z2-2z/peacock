@@ -1,0 +1,2 @@
+- compatibility with grammars of other fuzzers (nautilus, grammartron)
+- generate C code
