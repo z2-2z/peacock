@@ -82,6 +82,7 @@ impl GrammarBuilder {
         // remove mixed production rules
         // break rules with more than two non-terminals
         // convert to GNF via expansion
+        // set new entrypoint
         
         Ok(cfg)
     }

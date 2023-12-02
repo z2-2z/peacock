@@ -1,0 +1,8 @@
+{
+    "<ENTRYPOINT>": [
+        ["<X>"]
+    ],
+    "<X>": [
+        ["<ENTRYPOINT>"]
+    ]
+}

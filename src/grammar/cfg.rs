@@ -180,29 +180,27 @@ impl ContextFreeGrammar {
         let mut i = 0;
         
         while i < self.rules.len() {
-            let rule = &mut self.rules[i];
+            let rule = &self.rules[i];
             
             if rule.rhs().len() == 1 && rule.rhs()[0].is_non_terminal() {
-                let Symbol::NonTerminal(to_expand) = rule.rhs.remove(0) else { unreachable!() };
+                let old_rule = self.rules.remove(i);
+                let Symbol::NonTerminal(to_expand) = &old_rule.rhs[0] else { unreachable!() };
                 let mut new_rules = Vec::new();
-                let lhs = rule.lhs.clone();
                 
                 for other_rule in &self.rules {
                     if to_expand.id() == other_rule.lhs().id() {
                         new_rules.push(ProductionRule {
-                            lhs: lhs.clone(),
+                            lhs: old_rule.lhs().clone(),
                             rhs: other_rule.rhs.clone(),
                         });
                     }
                 }
                 
-                self.rules.remove(i);
                 self.rules.append(&mut new_rules);
             } else {
                 i += 1;
             }
         }
-            
     }
 }
 
@@ -240,6 +238,17 @@ mod tests {
             .unwrap();
         
         assert_eq!(cfg.rules().len(), 4);
+        
+        println!("{:#?}", cfg.rules());
+    }
+    
+    #[test]
+    #[should_panic]
+    fn test_recursion() {
+        let cfg = ContextFreeGrammar::builder()
+            .peacock_grammar("test-data/grammars/recursion.json").unwrap()
+            .build()
+            .unwrap();
         
         println!("{:#?}", cfg.rules());
     }
