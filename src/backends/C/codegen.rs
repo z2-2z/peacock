@@ -105,7 +105,22 @@ fn emit_rand(fmt: &mut CFormatter<File>) {
     fmt.write("#endif");
     fmt.blankline();
     
-    //TODO: seeding function
+    fmt.write("#ifndef DISABLE_seed");
+    fmt.write("void seed (size_t new_seed) {");
+    fmt.indent();
+    fmt.write("if (!new_seed) {");
+    fmt.indent();
+    fmt.write("new_seed = 0xDEADBEEF;");
+    fmt.unindent();
+    fmt.write("}");
+    fmt.blankline();
+    fmt.write("rand_state = new_seed;");
+    fmt.unindent();
+    fmt.write("}");
+    fmt.write("#else");
+    fmt.write("void seed (size_t);");
+    fmt.write("#endif");
+    fmt.blankline();
 }
 
 fn emit_mutation_types(fmt: &mut CFormatter<File>) {
