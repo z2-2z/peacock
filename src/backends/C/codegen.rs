@@ -31,11 +31,46 @@ fn emit_mutation_declarations(grammar: &LowLevelGrammar, fmt: &mut CFormatter<Fi
     fmt.blankline();
 }
 
-fn emit_mutation_function(nonterm: usize, rules: &Vec<Vec<LLSymbol>>, grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
-    fmt.write(format!("// This is the sequence mutation function for non-terminal {:?}", grammar.nonterminals()[nonterm]));
-    fmt.write(format!("static int mutate_seq_nonterm{} (Sequence* seq, size_t* step) {{", nonterm));
+fn emit_mutation_function_rule(rule: &[LLSymbol], fmt: &mut CFormatter<File>) {
+    for symbol in rule {
+        if let LLSymbol::NonTerminal(dst) = symbol {
+            fmt.write(format!("if (!mutate_seq_nonterm{}(seq, step)) {{", dst.id()));
+            fmt.indent();
+            fmt.write("return 0;");
+            fmt.unindent();
+            fmt.write("}");
+            fmt.blankline();
+        }
+    }
+}
+
+fn emit_mutation_function_single(rule: &[LLSymbol], fmt: &mut CFormatter<File>) {
+    fmt.write("size_t idx = seq->len;");
+    fmt.blankline();
+    fmt.write("if (*step < idx) {");
     fmt.indent();
+    fmt.write("*step += 1;");
+    fmt.unindent();
+    fmt.write("} else {");
+    fmt.indent();
+    fmt.write("if (idx >= seq->capacity) {");
+    fmt.indent();
+    fmt.write("return 0;");
+    fmt.unindent();
+    fmt.write("}");
+    fmt.blankline();
+    fmt.write("seq->buf[idx] = 0;");
+    fmt.write("seq->len = idx + 1;");
+    fmt.unindent();
+    fmt.write("}");
+    fmt.blankline();
     
+    emit_mutation_function_rule(rule, fmt);
+    
+    fmt.write("return 1;");
+}
+
+fn emit_mutation_function_multiple(rules: &Vec<Vec<LLSymbol>>, fmt: &mut CFormatter<File>) {
     fmt.write("size_t idx = seq->len;");
     fmt.write("size_t target;");
     fmt.blankline();
@@ -66,16 +101,7 @@ fn emit_mutation_function(nonterm: usize, rules: &Vec<Vec<LLSymbol>>, grammar: &
         fmt.write(format!("case {}: {{", i));
         fmt.indent();
         
-        for symbol in rule {
-            if let LLSymbol::NonTerminal(dst) = symbol {
-                fmt.write(format!("if (!mutate_seq_nonterm{}(seq, step)) {{", dst.id()));
-                fmt.indent();
-                fmt.write("return 0;");
-                fmt.unindent();
-                fmt.write("}");
-                fmt.blankline();
-            }
-        }
+        emit_mutation_function_rule(rule, fmt);
         
         fmt.write("break;");
         fmt.unindent();
@@ -91,7 +117,22 @@ fn emit_mutation_function(nonterm: usize, rules: &Vec<Vec<LLSymbol>>, grammar: &
     fmt.unindent();
     fmt.write("}");
     fmt.blankline();
+    
     fmt.write("return 1;");
+}
+
+fn emit_mutation_function(nonterm: usize, rules: &Vec<Vec<LLSymbol>>, grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
+    fmt.write(format!("// This is the sequence mutation function for non-terminal {:?}", grammar.nonterminals()[nonterm]));
+    fmt.write(format!("static int mutate_seq_nonterm{} (Sequence* seq, size_t* step) {{", nonterm));
+    fmt.indent();
+    
+    if rules.is_empty() {
+        unreachable!()
+    } else if rules.len() == 1 {
+        emit_mutation_function_single(&rules[0], fmt);
+    } else {
+        emit_mutation_function_multiple(rules, fmt);
+    }
     
     fmt.unindent();
     fmt.write("}");

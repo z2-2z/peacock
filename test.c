@@ -4,6 +4,25 @@ typedef struct {
     size_t capacity;
 } Sequence;
 
+static int generate_seq_SNGLE (Sequence* seq, size_t* step) {
+    size_t idx = seq->len;
+    
+    if (*step < idx) {
+        *step += 1;
+    } else {
+        if (idx >= seq->capacity) {
+            return 0;
+        }
+        
+        seq->buf[idx] = 0;
+        seq->len = idx + 1;
+    }
+    
+    // code inside case
+    
+    return 1;
+}
+
 static int generate_seq_ENTRYPOINT (Sequence* seq, size_t* step) {
     size_t idx = seq->len;
     size_t target;
