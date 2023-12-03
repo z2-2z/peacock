@@ -139,6 +139,30 @@ fn emit_mutation_function(nonterm: usize, rules: &Vec<Vec<LLSymbol>>, grammar: &
     fmt.blankline();
 }
 
+fn emit_mutation_entrypoint(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
+    fmt.write("size_t mutate_sequence (void* buf, size_t len, size_t capacity) {");
+    fmt.indent();
+    
+    fmt.write("Sequence seq = {");
+    fmt.indent();
+    fmt.write(".buf = (size_t*) buf,");
+    fmt.write(".len = len,");
+    fmt.write(".capacity = capcaity,");
+    fmt.unindent();
+    fmt.write("};");
+    
+    fmt.write("size_t step = 0;");
+    fmt.blankline();
+    
+    fmt.write(format!("mutate_seq_nonterm{}(&seq, &step);", grammar.entrypoint().id()));
+    fmt.blankline();
+    
+    fmt.write("return seq.len;");
+    
+    fmt.unindent();
+    fmt.write("}");
+}
+
 fn emit_mutation_code(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
     emit_mutation_types(fmt);
     
@@ -147,11 +171,14 @@ fn emit_mutation_code(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
     for (nonterm, rules) in grammar.rules() {
         emit_mutation_function(*nonterm, rules, grammar, fmt);
     }
+    
+    emit_mutation_entrypoint(grammar, fmt);
 }
 
 pub struct CGenerator {
     outfile: PathBuf,
     //TODO: optional header file
+    // prefix
 }
 
 impl CGenerator {

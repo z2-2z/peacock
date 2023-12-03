@@ -30,6 +30,7 @@ pub struct LowLevelGrammar {
     rules: HashMap<usize, Vec<Vec<LLSymbol>>>,
     terminals: Vec<String>,
     nonterminals: Vec<String>,
+    entrypoint: LLNonTerminal,
 }
 
 impl LowLevelGrammar {
@@ -76,6 +77,7 @@ impl LowLevelGrammar {
             rules,
             terminals,
             nonterminals,
+            entrypoint: LLNonTerminal(*nonterm_map.get(grammar.entrypoint().id()).unwrap()),
         }
     }
     
@@ -89,6 +91,10 @@ impl LowLevelGrammar {
     
     pub fn nonterminals(&self) -> &[String] {
         &self.nonterminals
+    }
+    
+    pub fn entrypoint(&self) -> &LLNonTerminal {
+        &self.entrypoint
     }
 }
 
