@@ -29,6 +29,10 @@ where
     pub fn write<S: AsRef<str>>(&mut self, line: S) {
         writeln!(&mut self.stream, "{:width$}{}", "", line.as_ref(), width = self.indentation).expect("Could not write to outfile");
     }
+    
+    pub fn blankline(&mut self) {
+        writeln!(&mut self.stream).expect("Could not write to outfile");
+    }
 }
 
 #[cfg(test)]
@@ -41,7 +45,9 @@ mod tests {
         let mut fmt = CFormatter::new(stdout());
         fmt.write("asdf {");
         fmt.indent();
+        fmt.blankline();
         fmt.write("yeehaw");
+        fmt.blankline();
         fmt.unindent();
         fmt.write("}");
     }

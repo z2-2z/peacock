@@ -14,6 +14,12 @@ impl LLTerminal {
 #[derive(Debug)]
 pub struct LLNonTerminal(usize);
 
+impl LLNonTerminal {
+    pub fn id(&self) -> usize {
+        self.0
+    }
+}
+
 #[derive(Debug)]
 pub enum LLSymbol {
     Terminal(LLTerminal),
