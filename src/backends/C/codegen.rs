@@ -195,6 +195,13 @@ fn emit_mutation_entrypoint(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File
     fmt.write("size_t mutate_sequence (void* buf, size_t len, size_t capacity) {");
     fmt.indent();
     
+    fmt.write("if (UNLIKELY(!buf || !capacity)) {");
+    fmt.indent();
+    fmt.write("return 0;");
+    fmt.unindent();
+    fmt.write("}");
+    fmt.blankline();
+    
     fmt.write("Sequence seq = {");
     fmt.indent();
     fmt.write(".buf = (size_t*) buf,");
