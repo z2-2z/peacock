@@ -44,7 +44,7 @@ fn emit_rand(fmt: &mut CFormatter<File>) {
     fmt.blankline();
     
     fmt.write("#ifndef DISABLE_rand");
-    fmt.write("static size_t rand (void) {");
+    fmt.write("static inline size_t rand (void) {");
     fmt.indent();
     fmt.write("size_t x = rand_state;");
     fmt.write("x ^= x << 13;");
@@ -86,7 +86,7 @@ fn emit_mutation_declarations(grammar: &LowLevelGrammar, fmt: &mut CFormatter<Fi
 fn emit_mutation_function_rule(rule: &[LLSymbol], fmt: &mut CFormatter<File>) {
     for symbol in rule {
         if let LLSymbol::NonTerminal(dst) = symbol {
-            fmt.write(format!("if (!mutate_seq_nonterm{}(seq, step)) {{", dst.id()));
+            fmt.write(format!("if (UNLIKELY(!mutate_seq_nonterm{}(seq, step))) {{", dst.id()));
             fmt.indent();
             fmt.write("return 0;");
             fmt.unindent();
@@ -105,7 +105,7 @@ fn emit_mutation_function_single(rule: &[LLSymbol], fmt: &mut CFormatter<File>) 
     fmt.unindent();
     fmt.write("} else {");
     fmt.indent();
-    fmt.write("if (idx >= seq->capacity) {");
+    fmt.write("if (UNLIKELY(idx >= seq->capacity)) {");
     fmt.indent();
     fmt.write("return 0;");
     fmt.unindent();
@@ -133,7 +133,7 @@ fn emit_mutation_function_multiple(rules: &Vec<Vec<LLSymbol>>, fmt: &mut CFormat
     fmt.unindent();
     fmt.write("} else {");
     fmt.indent();
-    fmt.write("if (idx >= seq->capacity) {");
+    fmt.write("if (UNLIKELY(idx >= seq->capacity)) {");
     fmt.indent();
     fmt.write("return 0;");
     fmt.unindent();
