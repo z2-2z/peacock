@@ -1,6 +1,7 @@
 - compatibility with grammars of other fuzzers (nautilus, grammartron)
 - generate C code
 - generate libafl automaton
+- feature flags for backends and frontends
 
 C:
     non-terminal can be a function where each rule has id
