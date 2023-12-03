@@ -297,10 +297,6 @@ fn emit_terminals(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
     for (i, term) in grammar.terminals().iter().enumerate() {
         let term = term.as_bytes();
         
-        if term.len() == 1 || term.len() == 2 || term.len() == 4 || term.len() == 8 {
-            continue;
-        }
-        
         fmt.write(format!("static const unsigned char TERM{}[{}] = {{", i, term.len()));
         fmt.indent();
         
@@ -326,7 +322,7 @@ fn emit_serialization_declarations(grammar: &LowLevelGrammar, fmt: &mut CFormatt
     fmt.blankline();
 }
 
-fn emit_serialization_function_rule(rule: &[LLSymbol], grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
+fn emit_serialization_function_rule(rule: &[LLSymbol], fmt: &mut CFormatter<File>) {
     for symbol in rule {
         match symbol {
             LLSymbol::NonTerminal(nonterm) => {
@@ -335,64 +331,20 @@ fn emit_serialization_function_rule(rule: &[LLSymbol], grammar: &LowLevelGrammar
                 fmt.blankline();
             },
             LLSymbol::Terminal(term) => {
-                let data = grammar.terminals()[term.id()].as_bytes();
-                
-                match data.len() {
-                    1 => {
-                        fmt.write("if (UNLIKELY(out_len < 1)) {");
-                        fmt.indent();
-                        fmt.write("goto end;");
-                        fmt.unindent();
-                        fmt.write("}");
-                        fmt.write(format!("*out++ = {}; out_len--;", data[0]));
-                    },
-                    2 => {
-                        let short = u16::from_le_bytes(data.try_into().unwrap());
-                        fmt.write("if (UNLIKELY(out_len < 2)) {");
-                        fmt.indent();
-                        fmt.write("goto end;");
-                        fmt.unindent();
-                        fmt.write("}");
-                        fmt.write(format!("*((uint16_t*) out) = {};", short));
-                        fmt.write("out += 2; out_len -= 2;");
-                    },
-                    4 => {
-                        let int = u32::from_le_bytes(data.try_into().unwrap());
-                        fmt.write("if (UNLIKELY(out_len < 4)) {");
-                        fmt.indent();
-                        fmt.write("goto end;");
-                        fmt.unindent();
-                        fmt.write("}");
-                        fmt.write(format!("*((uint32_t*) out) = {}U;", int));
-                        fmt.write("out += 4; out_len -= 4;");
-                    },
-                    8 => {
-                        let long = u64::from_le_bytes(data.try_into().unwrap());
-                        fmt.write("if (UNLIKELY(out_len < 8)) {");
-                        fmt.indent();
-                        fmt.write("goto end;");
-                        fmt.unindent();
-                        fmt.write("}");
-                        fmt.write(format!("*((uint64_t*) out) = {}ULL;", long));
-                        fmt.write("out += 8; out_len -= 8;");
-                    },
-                    _ => {
-                        fmt.write(format!("if (UNLIKELY(out_len < sizeof(TERM{}))) {{", term.id()));
-                        fmt.indent();
-                        fmt.write("goto end;");
-                        fmt.unindent();
-                        fmt.write("}");
-                        fmt.write(format!("__builtin_memcpy_inline(out, TERM{0}, sizeof(TERM{0}));", term.id()));
-                        fmt.write(format!("out += sizeof(TERM{0}); out_len -= sizeof(TERM{0});", term.id()));
-                        fmt.blankline();
-                    },
-                }
+                fmt.write(format!("if (UNLIKELY(out_len < sizeof(TERM{}))) {{", term.id()));
+                fmt.indent();
+                fmt.write("goto end;");
+                fmt.unindent();
+                fmt.write("}");
+                fmt.write(format!("__builtin_memcpy_inline(out, TERM{0}, sizeof(TERM{0}));", term.id()));
+                fmt.write(format!("out += sizeof(TERM{0}); out_len -= sizeof(TERM{0});", term.id()));
+                fmt.blankline();
             },
         }
     }
 }
 
-fn emit_serialization_function_single(rule: &[LLSymbol], grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
+fn emit_serialization_function_single(rule: &[LLSymbol], fmt: &mut CFormatter<File>) {
     let has_nonterminals = rule_has_nonterminals(rule);
     
     if !has_nonterminals {
@@ -415,7 +367,7 @@ fn emit_serialization_function_single(rule: &[LLSymbol], grammar: &LowLevelGramm
     fmt.write("*step += 1;");
     fmt.blankline();
     
-    emit_serialization_function_rule(rule, grammar, fmt);
+    emit_serialization_function_rule(rule, fmt);
     
     if rule_has_terminals(rule) {
         fmt.write("end:");
@@ -423,7 +375,7 @@ fn emit_serialization_function_single(rule: &[LLSymbol], grammar: &LowLevelGramm
     fmt.write("return (size_t) (out - original_out);");
 }
 
-fn emit_serialization_function_multiple(rules: &[Vec<LLSymbol>], grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
+fn emit_serialization_function_multiple(rules: &[Vec<LLSymbol>], fmt: &mut CFormatter<File>) {
     fmt.write("if (UNLIKELY(*step >= seq_len)) {");
     fmt.indent();
     fmt.write("return 0;");
@@ -447,7 +399,7 @@ fn emit_serialization_function_multiple(rules: &[Vec<LLSymbol>], grammar: &LowLe
         fmt.write(format!("case {}: {{", i));
         fmt.indent();
         
-        emit_serialization_function_rule(rule, grammar, fmt);
+        emit_serialization_function_rule(rule, fmt);
         
         fmt.write("break;");
         fmt.unindent();
@@ -478,9 +430,9 @@ fn emit_serialization_function(nonterm: usize, rules: &Vec<Vec<LLSymbol>>, gramm
     if rules.is_empty() {
         unreachable!()
     } else if rules.len() == 1 {
-        emit_serialization_function_single(&rules[0], grammar, fmt);
+        emit_serialization_function_single(&rules[0], fmt);
     } else {
-        emit_serialization_function_multiple(rules, grammar, fmt);
+        emit_serialization_function_multiple(rules, fmt);
     }
     
     fmt.unindent();
