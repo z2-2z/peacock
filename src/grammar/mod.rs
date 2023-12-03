@@ -1,2 +1,5 @@
-pub mod builder;
-pub mod cfg;
+mod builder;
+mod cfg;
+
+pub use builder::GrammarBuilder;
+pub use cfg::*;

@@ -3,7 +3,7 @@ use std::collections::HashSet;
 
 use crate::{
     parser::{peacock, gramatron},
-    ContextFreeGrammar, ProductionRule, Symbol, NonTerminal,
+    grammar::{ContextFreeGrammar, ProductionRule, Symbol, NonTerminal},
     error::{ParsingError, GrammarError},
 };
 

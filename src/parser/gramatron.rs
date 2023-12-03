@@ -4,7 +4,7 @@ use std::io::BufReader;
 use serde_json as json;
 
 use crate::{
-    ProductionRule, Symbol, Terminal, NonTerminal,
+    grammar::{ProductionRule, Symbol, Terminal, NonTerminal},
     error::ParsingError,
 };
 
