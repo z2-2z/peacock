@@ -11,12 +11,14 @@ const ENTRYPOINT: &str = "ENTRYPOINT";
 
 pub struct GrammarBuilder {
     rules: Vec<ProductionRule>,
+    optimize: bool,
 }
 
 impl GrammarBuilder {
     pub(crate) fn new() -> Self {
         Self {
             rules: Vec::new(),
+            optimize: true,
         }
     }
     
@@ -67,6 +69,11 @@ impl GrammarBuilder {
         Ok(self)
     }
     
+    pub fn optimize(mut self, optimize: bool) -> Self {
+        self.optimize = optimize;
+        self
+    }
+    
     pub fn build(self) -> Result<ContextFreeGrammar, GrammarError> {
         if self.check_entrypoint() {
             return Err(GrammarError::MissingEntrypoint);
@@ -81,13 +88,16 @@ impl GrammarBuilder {
             NonTerminal::new(ENTRYPOINT),
         );
         
-        cfg.concatenate_terminals();
-        cfg.remove_duplicate_rules();
-        cfg.remove_unit_rules();
-        cfg.remove_unused_rules();
-        cfg.remove_mixed_rules();
-        cfg.break_rules();
-        cfg.convert_to_gnf();
+        if self.optimize {
+            cfg.concatenate_terminals();
+            cfg.remove_duplicate_rules();
+            cfg.remove_unit_rules();
+            cfg.remove_unused_rules();
+            cfg.remove_mixed_rules();
+            cfg.break_rules();
+            cfg.convert_to_gnf();
+        }
+        
         cfg.set_new_entrypoint();
         
         Ok(cfg)
