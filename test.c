@@ -70,7 +70,7 @@ size_t generate_sequence (void* buf, size_t len, size_t capacity) {
     Sequence seq = {
         .buf = (size_t*) buf,
         .len = len,
-        .capacity = capcaity,
+        .capacity = capacity,
     };
     size_t step = 0;
     

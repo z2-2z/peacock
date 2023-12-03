@@ -9,6 +9,58 @@ use crate::{
     grammar::ContextFreeGrammar,
 };
 
+fn emit_headers(fmt: &mut CFormatter<File>) {
+    fmt.write("#include <stddef.h>");
+    fmt.blankline();
+}
+
+fn emit_macros(fmt: &mut CFormatter<File>) {
+    fmt.write("/* Helper Macros */");
+    
+    fmt.write("#undef THREAD_LOCAL");
+    fmt.write("#ifdef MULTITHREADING");
+    fmt.write("#define THREAD_LOCAL __thread");
+    fmt.write("#else");
+    fmt.write("#define THREAD_LOCAL");
+    fmt.write("#endif");
+    fmt.blankline();
+    
+    fmt.write("#undef UNLIKELY");
+    fmt.write("#define UNLIKELY(x) __builtin_expect(!!(x), 0)");
+    fmt.write("#undef LIKELY");
+    fmt.write("#define LIKELY(x) __builtin_expect(!!(x), 1)");
+    fmt.blankline();
+}
+
+fn emit_rand(fmt: &mut CFormatter<File>) {
+    fmt.write("/* RNG */");
+    
+    fmt.write("#ifndef SEED");
+    fmt.write(" #define SEED 0x35c6be9ba2548264");
+    fmt.write("#endif");
+    fmt.blankline();
+    
+    fmt.write("static THREAD_LOCAL size_t rand_state = SEED;");
+    fmt.blankline();
+    
+    fmt.write("#ifndef DISABLE_rand");
+    fmt.write("static size_t rand (void) {");
+    fmt.indent();
+    fmt.write("size_t x = rand_state;");
+    fmt.write("x ^= x << 13;");
+    fmt.write("x ^= x >> 7;");
+    fmt.write("x ^= x << 17;");
+    fmt.write("return rand_state = x;");
+    fmt.unindent();
+    fmt.write("}");
+    fmt.write("#else");
+    fmt.write("size_t rand (void);");
+    fmt.write("#endif");
+    fmt.blankline();
+    
+    //TODO: seeding function
+}
+
 fn emit_mutation_types(fmt: &mut CFormatter<File>) {
     fmt.write("// Used by mutation functions to represent a sequence of non-terminals");
     fmt.write("typedef struct {");
@@ -76,7 +128,7 @@ fn emit_mutation_function_multiple(rules: &Vec<Vec<LLSymbol>>, fmt: &mut CFormat
     fmt.blankline();
     fmt.write("if (*step < idx) {");
     fmt.indent();
-    fmt.write("target = seq->buf[step];");
+    fmt.write("target = seq->buf[*step];");
     fmt.write("*step += 1;");
     fmt.unindent();
     fmt.write("} else {");
@@ -147,7 +199,7 @@ fn emit_mutation_entrypoint(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File
     fmt.indent();
     fmt.write(".buf = (size_t*) buf,");
     fmt.write(".len = len,");
-    fmt.write(".capacity = capcaity,");
+    fmt.write(".capacity = capacity,");
     fmt.unindent();
     fmt.write("};");
     
@@ -193,6 +245,9 @@ impl CGenerator {
         let outfile = File::create(self.outfile).expect("Could not create outfile");
         let mut formatter = CFormatter::new(outfile);
         
+        emit_headers(&mut formatter);
+        emit_macros(&mut formatter);
+        emit_rand(&mut formatter);
         emit_mutation_code(&grammar, &mut formatter);
     }
 }
