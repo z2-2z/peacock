@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::io::Write;
 
 use crate::{
     backends::C::{
@@ -485,9 +486,26 @@ fn emit_serialization_code(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>
     emit_serialization_entrypoint(grammar, fmt);
 }
 
+fn emit_header(mut outfile: File) {
+    write!(
+        &mut outfile,
+        "
+#ifndef __PEACOCK_GENERATOR_H
+#define __PEACOCK_GENERATOR_H
+
+#include <stddef.h>
+
+size_t mutate_sequence (void* buf, size_t len, size_t capacity);
+size_t serialize_sequence (size_t* seq, size_t seq_len, unsigned char* out, size_t out_len);
+
+#endif /* __PEACOCK_GENERATOR_H */
+"
+    ).expect("Could not write to header file");
+}
+
 pub struct CGenerator {
     outfile: PathBuf,
-    //TODO: optional header file
+    header: bool,
     //TODO: prefix
 }
 
@@ -495,12 +513,18 @@ impl CGenerator {
     pub fn new<P: AsRef<Path>>(outfile: P) -> Self {
         Self {
             outfile: outfile.as_ref().to_path_buf(),
+            header: true,
         }
     }
     
-    pub fn generate(self, grammar: ContextFreeGrammar) {
+    pub fn generate_header(mut self, flag: bool) -> Self {
+        self.header = flag;
+        self
+    }
+    
+    pub fn generate(mut self, grammar: ContextFreeGrammar) {
         let grammar = LowLevelGrammar::from_high_level_grammar(grammar);
-        let outfile = File::create(self.outfile).expect("Could not create outfile");
+        let outfile = File::create(&self.outfile).expect("Could not create source file");
         let mut formatter = CFormatter::new(outfile);
         
         emit_headers(&mut formatter);
@@ -508,6 +532,12 @@ impl CGenerator {
         emit_rand(&mut formatter);
         emit_mutation_code(&grammar, &mut formatter);
         emit_serialization_code(&grammar, &mut formatter);
+        
+        if self.header {
+            self.outfile.set_extension("h");
+            let outfile = File::create(&self.outfile).expect("Could not create header file");
+            emit_header(outfile);
+        }
     }
 }
 
