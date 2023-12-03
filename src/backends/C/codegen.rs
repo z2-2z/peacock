@@ -99,11 +99,7 @@ fn emit_mutation_function_rule(rule: &[LLSymbol], fmt: &mut CFormatter<File>) {
 fn emit_mutation_function_single(rule: &[LLSymbol], fmt: &mut CFormatter<File>) {
     fmt.write("size_t idx = seq->len;");
     fmt.blankline();
-    fmt.write("if (*step < idx) {");
-    fmt.indent();
-    fmt.write("*step += 1;");
-    fmt.unindent();
-    fmt.write("} else {");
+    fmt.write("if (*step >= idx) {");
     fmt.indent();
     fmt.write("if (UNLIKELY(idx >= seq->capacity)) {");
     fmt.indent();
@@ -115,6 +111,9 @@ fn emit_mutation_function_single(rule: &[LLSymbol], fmt: &mut CFormatter<File>) 
     fmt.write("seq->len = idx + 1;");
     fmt.unindent();
     fmt.write("}");
+    fmt.blankline();
+    
+    fmt.write("*step += 1;");
     fmt.blankline();
     
     emit_mutation_function_rule(rule, fmt);
@@ -129,7 +128,6 @@ fn emit_mutation_function_multiple(rules: &Vec<Vec<LLSymbol>>, fmt: &mut CFormat
     fmt.write("if (*step < idx) {");
     fmt.indent();
     fmt.write("target = seq->buf[*step];");
-    fmt.write("*step += 1;");
     fmt.unindent();
     fmt.write("} else {");
     fmt.indent();
@@ -144,6 +142,9 @@ fn emit_mutation_function_multiple(rules: &Vec<Vec<LLSymbol>>, fmt: &mut CFormat
     fmt.write("seq->len = idx + 1;");
     fmt.unindent();
     fmt.write("}");
+    fmt.blankline();
+    
+    fmt.write("*step += 1;");
     fmt.blankline();
     
     fmt.write("switch (target) {");

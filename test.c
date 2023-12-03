@@ -7,9 +7,7 @@ typedef struct {
 static int generate_seq_SNGLE (Sequence* seq, size_t* step) {
     size_t idx = seq->len;
     
-    if (*step < idx) {
-        *step += 1;
-    } else {
+    if (*step >= idx) {
         if (idx >= seq->capacity) {
             return 0;
         }
@@ -17,6 +15,8 @@ static int generate_seq_SNGLE (Sequence* seq, size_t* step) {
         seq->buf[idx] = 0;
         seq->len = idx + 1;
     }
+    
+     *step += 1;
     
     // code inside case
     
@@ -28,8 +28,7 @@ static int generate_seq_ENTRYPOINT (Sequence* seq, size_t* step) {
     size_t target;
     
     if (*step < idx) {
-        target = seq->buf[step];
-        *step += 1;
+        target = seq->buf[*step];
     } else {
         if (idx >= seq->capacity) {
             return 0;
@@ -39,6 +38,8 @@ static int generate_seq_ENTRYPOINT (Sequence* seq, size_t* step) {
         seq->buf[idx] = target;
         seq->len = idx + 1;
     }
+    
+    *step += 1;
     
     switch (target) {
         case 0: {
@@ -67,6 +68,10 @@ static int generate_seq_ENTRYPOINT (Sequence* seq, size_t* step) {
 
 // In rust: Vec<usize>
 size_t generate_sequence (void* buf, size_t len, size_t capacity) {
+    if (UNLIKELY(!buf || !capacity)) {
+        return 0;
+    }
+    
     Sequence seq = {
         .buf = (size_t*) buf,
         .len = len,
