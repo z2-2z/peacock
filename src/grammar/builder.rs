@@ -2,7 +2,7 @@ use std::path::Path;
 use std::collections::HashSet;
 
 use crate::{
-    parser::json::parse_json,
+    parser::{peacock, gramatron},
     ContextFreeGrammar, ProductionRule, Symbol, NonTerminal,
     error::{ParsingError, GrammarError},
 };
@@ -52,10 +52,17 @@ impl GrammarBuilder {
 }
 
 impl GrammarBuilder {
-    /// Parse a single JSON file with peacock's grammar format.
+    /// Parse a single JSON file in peacock's grammar format.
     /// TODO: explain peacock format
     pub fn peacock_grammar<P: AsRef<Path>>(mut self, path: P) -> Result<Self, ParsingError> {
-        let mut new_rules = parse_json(path.as_ref())?;
+        let mut new_rules = peacock::parse_json(path.as_ref())?;
+        self.rules.append(&mut new_rules);
+        Ok(self)
+    }
+    
+    /// Parse a single JSON file in [Gramatron](https://github.com/HexHive/Gramatron)'s grammar format.
+    pub fn gramatron_grammar<P: AsRef<Path>>(mut self, path: P) -> Result<Self, ParsingError> {
+        let mut new_rules = gramatron::parse_json(path.as_ref())?;
         self.rules.append(&mut new_rules);
         Ok(self)
     }
@@ -98,5 +105,14 @@ mod tests {
             .peacock_grammar("test-data/grammars/invalid-refs.json").unwrap()
             .build()
             .unwrap();
+    }
+    
+    #[test]
+    fn test_gramatron_grammar() {
+        let cfg = ContextFreeGrammar::builder()
+            .gramatron_grammar("test-data/grammars/gramatron.json").unwrap()
+            .build()
+            .unwrap();
+        println!("{:#?}", cfg.rules());
     }
 }
