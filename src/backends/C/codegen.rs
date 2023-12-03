@@ -506,7 +506,6 @@ size_t serialize_sequence (size_t* seq, size_t seq_len, unsigned char* out, size
 pub struct CGenerator {
     outfile: PathBuf,
     header: bool,
-    //TODO: prefix
 }
 
 impl CGenerator {
