@@ -9,6 +9,46 @@ use crate::{
     grammar::ContextFreeGrammar,
 };
 
+fn rule_has_nonterminals(rule: &[LLSymbol]) -> bool {
+    for symbol in rule {
+        if matches!(symbol, LLSymbol::NonTerminal(_)) {
+            return true;
+        }
+    }
+    
+    false
+}
+
+fn rules_have_nonterminals(rules: &[Vec<LLSymbol>]) -> bool {
+    for rule in rules {
+        if rule_has_nonterminals(rule) {
+            return true;
+        }
+    }
+    
+    false
+}
+
+fn rule_has_terminals(rule: &[LLSymbol]) -> bool {
+    for symbol in rule {
+        if matches!(symbol, LLSymbol::Terminal(_)) {
+            return true;
+        }
+    }
+    
+    false
+}
+
+fn rules_have_terminals(rules: &[Vec<LLSymbol>]) -> bool {
+    for rule in rules {
+        if rule_has_terminals(rule) {
+            return true;
+        }
+    }
+    
+    false
+}
+
 fn emit_headers(fmt: &mut CFormatter<File>) {
     fmt.write("#include <stddef.h>");
     fmt.blankline();
@@ -29,6 +69,12 @@ fn emit_macros(fmt: &mut CFormatter<File>) {
     fmt.write("#define UNLIKELY(x) __builtin_expect(!!(x), 0)");
     fmt.write("#undef LIKELY");
     fmt.write("#define LIKELY(x) __builtin_expect(!!(x), 1)");
+    fmt.blankline();
+    
+    fmt.write("#ifndef __clang__");
+    fmt.write("#undef __builtin_memcpy_inline");
+    fmt.write("#define __builtin_memcpy_inline __builtin_memcpy");
+    fmt.write("#endif");
     fmt.blankline();
 }
 
@@ -225,7 +271,6 @@ fn emit_mutation_entrypoint(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File
 
 fn emit_mutation_code(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
     emit_mutation_types(fmt);
-    
     emit_mutation_declarations(grammar, fmt);
     
     for (nonterm, rules) in grammar.rules() {
@@ -235,10 +280,189 @@ fn emit_mutation_code(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
     emit_mutation_entrypoint(grammar, fmt);
 }
 
+fn emit_terminals(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
+    fmt.write("/* Terminals */");
+    
+    for (i, term) in grammar.terminals().iter().enumerate() {
+        let term = term.as_bytes();
+        fmt.write(format!("static const unsigned char TERM{}[{}] = {{", i, term.len()));
+        fmt.indent();
+        
+        for chunk in term.chunks(8) {
+            let x: Vec<String> = chunk.iter().map(|x| format!("{:#02X},", *x)).collect();
+            fmt.write(x.join(" "));
+        }
+        
+        fmt.unindent();
+        fmt.write("};");
+    }
+    
+    fmt.blankline();
+}
+
+fn emit_serialization_declarations(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
+    fmt.write("/* Forward declarations for serialization functions */");
+    
+    for nonterm in grammar.rules().keys() {
+        fmt.write(format!("static size_t serialize_seq_nonterm{} (size_t*, size_t, unsigned char*, size_t, size_t*);", *nonterm));
+    }
+    
+    fmt.blankline();
+}
+
+fn emit_serialization_function_rule(rule: &[LLSymbol], fmt: &mut CFormatter<File>) {
+    for symbol in rule {
+        match symbol {
+            LLSymbol::NonTerminal(nonterm) => {
+                fmt.write(format!("len = serialize_seq_nonterm{}(seq, seq_len, out, out_len, step);", nonterm.id()));
+                fmt.write("out += len; out_len -= len;");
+                fmt.blankline();
+            },
+            LLSymbol::Terminal(term) => {
+                //TODO: optimize for 1, 2, 4, 8
+                fmt.write(format!("if (UNLIKELY(out_len < sizeof(TERM{}))) {{", term.id()));
+                fmt.indent();
+                fmt.write("goto end;");
+                fmt.unindent();
+                fmt.write("}");
+                fmt.write(format!("__builtin_memcpy_inline(out, TERM{0}, sizeof(TERM{0}));", term.id()));
+                fmt.write(format!("out += sizeof(TERM{0}); out_len -= sizeof(TERM{0});", term.id()));
+                fmt.blankline();
+            },
+        }
+    }
+}
+
+fn emit_serialization_function_single(rule: &[LLSymbol], fmt: &mut CFormatter<File>) {
+    let has_nonterminals = rule_has_nonterminals(rule);
+    
+    if !has_nonterminals {
+        fmt.write("(void) seq;");
+        fmt.blankline();
+    }
+    
+    fmt.write("if (UNLIKELY(*step >= seq_len)) {");
+    fmt.indent();
+    fmt.write("return 0;");
+    fmt.unindent();
+    fmt.write("}");
+    fmt.blankline();
+    
+    if has_nonterminals {
+        fmt.write("size_t len;");
+    }
+    
+    fmt.write("unsigned char* original_out = out;");
+    fmt.write("*step += 1;");
+    fmt.blankline();
+    
+    emit_serialization_function_rule(rule, fmt);
+    
+    if rule_has_terminals(rule) {
+        fmt.write("end:");
+    }
+    fmt.write("return (size_t) (out - original_out);");
+}
+
+fn emit_serialization_function_multiple(rules: &[Vec<LLSymbol>], fmt: &mut CFormatter<File>) {
+    fmt.write("if (UNLIKELY(*step >= seq_len)) {");
+    fmt.indent();
+    fmt.write("return 0;");
+    fmt.unindent();
+    fmt.write("}");
+    fmt.blankline();
+    
+    if rules_have_nonterminals(rules) {
+        fmt.write("size_t len;");
+    }
+    
+    fmt.write("unsigned char* original_out = out;");
+    fmt.write("size_t target = seq[*step];");
+    fmt.write("*step += 1;");
+    fmt.blankline();
+    
+    fmt.write("switch (target) {");
+    fmt.indent();
+    
+    for (i, rule) in rules.iter().enumerate() {
+        fmt.write(format!("case {}: {{", i));
+        fmt.indent();
+        
+        emit_serialization_function_rule(rule, fmt);
+        
+        fmt.write("break;");
+        fmt.unindent();
+        fmt.write("}");
+    }
+    
+    fmt.write("default: {");
+    fmt.indent();
+    fmt.write("__builtin_unreachable();");
+    fmt.unindent();
+    fmt.write("}");
+    
+    fmt.unindent();
+    fmt.write("}");
+    fmt.blankline();
+    
+    if rules_have_terminals(rules) {
+        fmt.write("end:");
+    }
+    fmt.write("return (size_t) (out - original_out);");
+}
+
+fn emit_serialization_function(nonterm: usize, rules: &Vec<Vec<LLSymbol>>, grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
+    fmt.write(format!("// This is the serialization function for non-terminal {:?}", grammar.nonterminals()[nonterm]));
+    fmt.write(format!("static size_t serialize_seq_nonterm{} (size_t* seq, size_t seq_len, unsigned char* out, size_t out_len, size_t* step) {{", nonterm));
+    fmt.indent();
+    
+    if rules.is_empty() {
+        unreachable!()
+    } else if rules.len() == 1 {
+        emit_serialization_function_single(&rules[0], fmt);
+    } else {
+        emit_serialization_function_multiple(rules, fmt);
+    }
+    
+    fmt.unindent();
+    fmt.write("}");
+    fmt.blankline();
+}
+
+fn emit_serialization_entrypoint(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
+    fmt.write("size_t serialize_sequence (size_t* seq, size_t seq_len, unsigned char* out, size_t out_len) {");
+    fmt.indent();
+    
+    fmt.write("if (UNLIKELY(!seq || !seq_len || !out || !out_len)) {");
+    fmt.indent();
+    fmt.write("return 0;");
+    fmt.unindent();
+    fmt.write("}");
+    fmt.blankline();
+    
+    fmt.write("size_t step = 0;");
+    fmt.blankline();
+    
+    fmt.write(format!("return serialize_seq_nonterm{}(seq, seq_len, out, out_len, &step);", grammar.entrypoint().id()));
+    fmt.unindent();
+    fmt.write("}");
+}
+
+fn emit_serialization_code(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
+    emit_terminals(grammar, fmt);
+    emit_serialization_declarations(grammar, fmt);
+    
+    for (nonterm, rules) in grammar.rules() {
+        emit_serialization_function(*nonterm, rules, grammar, fmt);
+    }
+    
+    emit_serialization_entrypoint(grammar, fmt);
+}
+
 pub struct CGenerator {
     outfile: PathBuf,
     //TODO: optional header file
-    // prefix
+    //TODO: prefix
 }
 
 impl CGenerator {
@@ -257,6 +481,7 @@ impl CGenerator {
         emit_macros(&mut formatter);
         emit_rand(&mut formatter);
         emit_mutation_code(&grammar, &mut formatter);
+        emit_serialization_code(&grammar, &mut formatter);
     }
 }
 

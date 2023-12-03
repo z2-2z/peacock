@@ -83,3 +83,50 @@ size_t generate_sequence (void* buf, size_t len, size_t capacity) {
     
     return seq.len;
 }
+
+static const unsigned char term0[] = {...};
+
+static size_t serialize_seq_ENTRYPOINT (size_t* seq, size_t seq_len, unsigned char* out, size_t out_len, size_t* step) {
+    if (UNLIKELY(*step >= seq_len)) {
+        return 0;
+    }
+    
+    unsigned char* original_out = out;
+    size_t target = seq[*step];
+    *step += 1;
+    
+    switch (target) {
+        case 0: {
+            // non-terminal
+            size_t len = serialize_seq_NONTERM(seq, seq_len, out, out_len, step);
+            out += len; out_len -= len;
+            
+            // terminal
+            if (UNLIKELY(out_len < sizeof(term0))) {
+                goto end;
+            }
+            __builtin_memcpy_inline(out, term0, sizeof(term0));
+            out += sizeof(term0); out_len -= sizeof(term0);
+            //TODO: optimize for 1, 2, 4, 8
+            
+            break;
+        }
+        
+        default: {
+            __builtin_unreachable();
+        }
+    }
+    
+  end:
+    return (size_t) (out - original_out);
+}
+
+size_t serialize_sequence (size_t* seq, size_t seq_len, unsigned char* out, size_t out_len) {
+    if (UNLIKELY(!seq || !seq_len || !out || !out_len)) {
+        return 0;
+    }
+    
+    size_t step = 0;
+    
+    return serialize_seq_ENTRYPOINT(seq, seq_len, out, out_len, &step);
+}
