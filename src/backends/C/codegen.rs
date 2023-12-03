@@ -169,14 +169,22 @@ fn emit_mutation_function_single(rule: &[LLSymbol], fmt: &mut CFormatter<File>) 
 }
 
 fn emit_mutation_function_multiple(rules: &Vec<Vec<LLSymbol>>, fmt: &mut CFormatter<File>) {
+    let have_nonterminals = rules_have_nonterminals(rules);
+    
     fmt.write("size_t idx = seq->len;");
     fmt.write("size_t target;");
     fmt.blankline();
-    fmt.write("if (*step < idx) {");
-    fmt.indent();
-    fmt.write("target = seq->buf[*step];");
-    fmt.unindent();
-    fmt.write("} else {");
+    
+    if have_nonterminals {
+        fmt.write("if (*step < idx) {");
+        fmt.indent();
+        fmt.write("target = seq->buf[*step];");
+        fmt.unindent();
+        fmt.write("} else {");
+    } else {
+        fmt.write("if (*step >= idx) {");
+    }
+    
     fmt.indent();
     fmt.write("if (UNLIKELY(idx >= seq->capacity)) {");
     fmt.indent();
@@ -194,29 +202,31 @@ fn emit_mutation_function_multiple(rules: &Vec<Vec<LLSymbol>>, fmt: &mut CFormat
     fmt.write("*step += 1;");
     fmt.blankline();
     
-    fmt.write("switch (target) {");
-    fmt.indent();
-    
-    for (i, rule) in rules.iter().enumerate() {
-        fmt.write(format!("case {}: {{", i));
+    if have_nonterminals {
+        fmt.write("switch (target) {");
         fmt.indent();
         
-        emit_mutation_function_rule(rule, fmt);
+        for (i, rule) in rules.iter().enumerate() {
+            fmt.write(format!("case {}: {{", i));
+            fmt.indent();
+            
+            emit_mutation_function_rule(rule, fmt);
+            
+            fmt.write("break;");
+            fmt.unindent();
+            fmt.write("}");
+        }
         
-        fmt.write("break;");
+        fmt.write("default: {");
+        fmt.indent();
+        fmt.write("__builtin_unreachable();");
         fmt.unindent();
         fmt.write("}");
+        
+        fmt.unindent();
+        fmt.write("}");
+        fmt.blankline();
     }
-    
-    fmt.write("default: {");
-    fmt.indent();
-    fmt.write("__builtin_unreachable();");
-    fmt.unindent();
-    fmt.write("}");
-    
-    fmt.unindent();
-    fmt.write("}");
-    fmt.blankline();
     
     fmt.write("return 1;");
 }
