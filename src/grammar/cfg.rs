@@ -8,7 +8,7 @@ use crate::grammar::builder::GrammarBuilder;
 pub struct NonTerminal(String);
 
 impl NonTerminal {
-    pub fn new<S: Into<String>>(s: S) -> Self {
+    pub(crate) fn new<S: Into<String>>(s: S) -> Self {
         Self(s.into())
     }
     
@@ -21,7 +21,7 @@ impl NonTerminal {
 pub struct Terminal(String);
 
 impl Terminal {
-    pub fn new<S: Into<String>>(s: S) -> Self {
+    pub(crate) fn new<S: Into<String>>(s: S) -> Self {
         Self(s.into())
     }
     
@@ -55,7 +55,7 @@ pub struct ProductionRule {
 }
 
 impl ProductionRule {
-    pub fn new(lhs: NonTerminal, rhs: Vec<Symbol>) -> Self {
+    pub(crate) fn new(lhs: NonTerminal, rhs: Vec<Symbol>) -> Self {
         Self {
             lhs,
             rhs,
