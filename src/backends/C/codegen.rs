@@ -259,7 +259,7 @@ mod tests {
     #[test]
     fn test_generator() {
         let cfg = ContextFreeGrammar::builder()
-            .peacock_grammar("test-data/grammars/unit_rules.json").unwrap()
+            .gramatron_grammar("test-data/grammars/gramatron.json").unwrap()
             .build().unwrap();
         CGenerator::new("/tmp/out.c").generate(cfg);
     }

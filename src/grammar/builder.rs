@@ -96,6 +96,7 @@ impl GrammarBuilder {
             cfg.remove_mixed_rules();
             cfg.break_rules();
             cfg.convert_to_gnf();
+            cfg.remove_unused_rules();
         }
         
         cfg.set_new_entrypoint();
