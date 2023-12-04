@@ -2,6 +2,11 @@ use clap::Parser;
 use std::path::{PathBuf, Path};
 use std::process::Command;
 use std::ops::Deref;
+use serde::{Serialize, Deserialize};
+use ahash::RandomState;
+use libafl::prelude::{
+    Input,
+};
 use peacock_fuzz::{
     grammar::ContextFreeGrammar,
     backends::C::CGenerator,
@@ -22,6 +27,7 @@ type GrammarMutationFunc = extern "C" fn(buf: *mut usize, len: usize, capacity: 
 type GrammarSerializationFunc = extern "C" fn(seq: *const usize, seq_len: usize, out: *mut u8, out_len: usize) -> usize;
 type GrammarSeedFunc = extern "C" fn(seed: usize);
 
+#[derive(Clone)]
 struct GrammarInterface {
     mutate: GrammarMutationFunc,
     serialize: GrammarSerializationFunc,
@@ -39,7 +45,7 @@ fn mkdir(dir: &str) {
 
 fn compile_so(output: &Path, input: &Path) {
     let output = Command::new("cc")
-        .args(["-o", &output.to_string_lossy(), "-s", "-fvisibility=hidden", "-DMAKE_VISIBLE", "-O3", "-fPIC", "-shared", &input.to_string_lossy()])
+        .args(["-o", &output.to_string_lossy(), "-s", "-fvisibility=hidden", "-DMAKE_VISIBLE", "-O3", "-fPIC", "-shared", &input.to_string_lossy(), "-nostdlib"])
         .output()
         .expect("Could not launch C compiler");
     
@@ -56,12 +62,10 @@ fn get_function<T: Copy>(lib: &libloading::Library, name: &[u8]) -> T {
 
 fn load_grammar(grammar_file: &str, out_dir: &str) -> GrammarInterface {
     let generator_so = PathBuf::from(format!("{}/generator.so", out_dir));
+    let c_file = PathBuf::from(format!("{}/generator.c", out_dir));
     
     mkdir(out_dir);
     if !generator_so.exists() {
-        let base_dir = tempfile::TempDir::with_prefix("peacock").expect("Could not create temporary file");
-        let c_file = base_dir.path().join("generator.c");
-        
         /* Generate code from grammar */
         let cfg = ContextFreeGrammar::builder()
             .peacock_grammar(grammar_file).unwrap()
@@ -85,6 +89,21 @@ fn load_grammar(grammar_file: &str, out_dir: &str) -> GrammarInterface {
         seed,
     }
 }
+
+/* Input type */
+#[derive(Serialize, Deserialize, Clone, Debug, Hash, Default)]
+struct PeacockInput {
+    sequence: Vec<usize>,
+}
+
+impl Input for PeacockInput {
+    fn generate_name(&self, _idx: usize) -> String {
+        let hash = RandomState::with_seeds(0, 0, 0, 0).hash_one(self);
+        format!("peacock-raw-{:016x}", hash)
+    }
+}
+
+/* Executor Wrapper */
 
 fn main() {
     let args = Args::parse();
