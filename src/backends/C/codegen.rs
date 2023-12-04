@@ -78,6 +78,14 @@ fn emit_macros(fmt: &mut CFormatter<File>) {
     fmt.write("#define __builtin_memcpy_inline __builtin_memcpy");
     fmt.write("#endif");
     fmt.blankline();
+    
+    fmt.write("#undef EXPORT_FUNCTION");
+    fmt.write("#ifdef MAKE_VISIBLE");
+    fmt.write("#define EXPORT_FUNCTION __attribute__((visibility (\"default\")))");
+    fmt.write("#else");
+    fmt.write("#define EXPORT_FUNCTION");
+    fmt.write("#endif");
+    fmt.blankline();
 }
 
 fn emit_rand(fmt: &mut CFormatter<File>) {
@@ -107,6 +115,7 @@ fn emit_rand(fmt: &mut CFormatter<File>) {
     fmt.blankline();
     
     fmt.write("#ifndef DISABLE_seed");
+    fmt.write("EXPORT_FUNCTION");
     fmt.write("void seed (size_t new_seed) {");
     fmt.indent();
     fmt.write("if (!new_seed) {");
@@ -266,6 +275,7 @@ fn emit_mutation_function(nonterm: usize, rules: &Vec<Vec<LLSymbol>>, grammar: &
 }
 
 fn emit_mutation_entrypoint(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
+    fmt.write("EXPORT_FUNCTION");
     fmt.write("size_t mutate_sequence (void* buf, size_t len, size_t capacity) {");
     fmt.indent();
     
@@ -457,6 +467,7 @@ fn emit_serialization_function(nonterm: usize, rules: &Vec<Vec<LLSymbol>>, gramm
 }
 
 fn emit_serialization_entrypoint(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
+    fmt.write("EXPORT_FUNCTION");
     fmt.write("size_t serialize_sequence (size_t* seq, size_t seq_len, unsigned char* out, size_t out_len) {");
     fmt.indent();
     
@@ -497,6 +508,7 @@ fn emit_header(mut outfile: File) {
 
 size_t mutate_sequence (void* buf, size_t len, size_t capacity);
 size_t serialize_sequence (size_t* seq, size_t seq_len, unsigned char* out, size_t out_len);
+void seed (size_t new_seed);
 
 #endif /* __PEACOCK_GENERATOR_H */
 "
