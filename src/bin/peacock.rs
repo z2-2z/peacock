@@ -16,7 +16,8 @@ use libafl::prelude::{
     StdWeightedScheduler, powersched::PowerSchedule,
     StdFuzzer, ForkserverExecutor, TimeoutForkserverExecutor,
     Fuzzer, HasTargetBytes, Mutator, MutationResult,
-    HasRand, feedback_and, TimeoutFeedback,
+    HasRand, feedback_and, TimeoutFeedback, HasCorpus, Corpus,
+    Generator,
 };
 use libafl_bolts::prelude::{
     UnixShMemProvider, ShMemProvider, ShMem, AsMutSlice,
@@ -151,7 +152,7 @@ impl Default for PeacockInput {
 }
 
 /* Mutator */
-pub struct PeacockMutator;
+struct PeacockMutator;
 
 impl Named for PeacockMutator {
     fn name(&self) -> &str {
@@ -175,6 +176,25 @@ where
         }
         
         Ok(MutationResult::Mutated)
+    }
+}
+
+/* Generator */
+struct PeacockGenerator;
+
+impl<S> Generator<PeacockInput, S> for PeacockGenerator {
+    fn generate(&mut self, _state: &mut S) -> Result<PeacockInput, Error> {
+        let mut input = PeacockInput::default();
+        let capacity = input.sequence.capacity();
+        let buf = input.sequence.as_mut_ptr();
+        
+        unsafe {
+            let new_len = grammar_mutate.unwrap_unchecked()(buf, 0, capacity);
+            debug_assert!(new_len <= capacity);
+            input.sequence.set_len(new_len);
+        }
+        
+        Ok(input)
     }
 }
 
@@ -232,8 +252,8 @@ fn fuzz(args: Args) -> Result<(), Error> {
     
     let mut state = StdState::new(
         StdRand::with_seed(seed),
-        CachedOnDiskCorpus::<PeacockInput>::new(queue_dir, 128)?,
-        OnDiskCorpus::new(crashes_dir)?,
+        CachedOnDiskCorpus::<PeacockInput>::new(&queue_dir, 128)?,
+        OnDiskCorpus::new(&crashes_dir)?,
         &mut feedback,
         &mut objective,
     )?;
@@ -269,9 +289,26 @@ fn fuzz(args: Args) -> Result<(), Error> {
     let signal = str::parse::<Signal>("SIGKILL").unwrap();
     let mut executor = TimeoutForkserverExecutor::with_signal(forkserver, timeout, signal)?;
     
-    // load initial inputs
+    state.load_initial_inputs(
+        &mut fuzzer,
+        &mut executor,
+        &mut mgr,
+        &[
+            queue_dir,
+            crashes_dir,
+        ]
+    )?;
     
-    // generate if necessary
+    if state.corpus().count() == 0 {
+        let mut generator = PeacockGenerator {};
+        state.generate_initial_inputs(
+            &mut fuzzer,
+            &mut executor,
+            &mut generator,
+            &mut mgr,
+            4096,
+        )?;
+    }
     
     let mut stages = tuple_list!(calibration, mutational);
 
