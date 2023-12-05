@@ -7,7 +7,7 @@ use ahash::RandomState;
 use std::time::Duration;
 use nix::sys::signal::Signal;
 use libafl::prelude::{
-    Input, Error, SimpleMonitor,
+    Input, Error,
     HitcountsMapObserver, StdMapObserver,
     TimeObserver, MaxMapFeedback, CalibrationStage, feedback_or,
     TimeFeedback, CrashFeedback, StdState, CachedOnDiskCorpus,
@@ -17,7 +17,7 @@ use libafl::prelude::{
     StdFuzzer, ForkserverExecutor, TimeoutForkserverExecutor,
     Fuzzer, HasTargetBytes, Mutator, MutationResult,
     HasRand, feedback_and, TimeoutFeedback, HasCorpus, Corpus,
-    Generator, Launcher, EventConfig,
+    Generator, Launcher, EventConfig, tui::ui::TuiUI, tui::TuiMonitor,
 };
 use libafl_bolts::prelude::{
     UnixShMemProvider, ShMemProvider, ShMem, AsMutSlice,
@@ -321,10 +321,11 @@ fn fuzz(args: Args) -> Result<(), Error> {
     
     let shmem_provider = UnixShMemProvider::new()?;
     
-    //TODO: tui monitor
-    let monitor = SimpleMonitor::new(|s| {
-        println!("{s}");
-    });
+    let tui = TuiUI::new(
+        "peacock".to_string(),
+        true
+    );
+    let monitor = TuiMonitor::new(tui);
     
     let cores = Cores::from_cmdline(&args.cores).expect("Invalid core specification");
     
