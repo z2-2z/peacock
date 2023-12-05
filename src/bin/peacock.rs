@@ -11,16 +11,17 @@ use libafl::prelude::{
     HitcountsMapObserver, StdMapObserver,
     TimeObserver, MaxMapFeedback, CalibrationStage, feedback_or,
     TimeFeedback, CrashFeedback, StdState, CachedOnDiskCorpus,
-    OnDiskCorpus, StdMOptMutator, havoc_mutations,
+    OnDiskCorpus,
     StdPowerMutationalStage, IndexesLenTimeMinimizerScheduler,
     StdWeightedScheduler, powersched::PowerSchedule,
     StdFuzzer, ForkserverExecutor, TimeoutForkserverExecutor,
-    Fuzzer, HasTargetBytes,
+    Fuzzer, HasTargetBytes, Mutator, MutationResult,
+    HasRand,
 };
 use libafl_bolts::prelude::{
     UnixShMemProvider, ShMemProvider, ShMem, AsMutSlice,
     current_nanos, StdRand, tuple_list,
-    HasLen, OwnedSlice,
+    HasLen, OwnedSlice, Named, Rand,
 };
 use peacock_fuzz::{
     grammar::ContextFreeGrammar,
@@ -42,8 +43,11 @@ type GrammarMutationFunc = extern "C" fn(buf: *mut usize, len: usize, capacity: 
 type GrammarSerializationFunc = extern "C" fn(seq: *const usize, seq_len: usize, out: *mut u8, out_len: usize) -> usize;
 type GrammarSeedFunc = extern "C" fn(seed: usize);
 
+#[allow(non_upper_case_globals)]
 static mut grammar_mutate: Option<GrammarMutationFunc> = None;
+#[allow(non_upper_case_globals)]
 static mut grammar_serialize: Option<GrammarSerializationFunc> = None;
+#[allow(non_upper_case_globals)]
 static mut grammar_seed: Option<GrammarSeedFunc> = None;
 
 fn mkdir(dir: &str) {
@@ -135,11 +139,43 @@ impl HasTargetBytes for PeacockInput {
     }
 }
 
-//TODO: Default with fixed capaciy
+impl Default for PeacockInput {
+    fn default() -> Self {
+        Self {
+            sequence: Vec::with_capacity(4096 * 2),
+        }
+    }
+}
 
 /* Mutator */
+pub struct PeacockMutator;
 
+impl Named for PeacockMutator {
+    fn name(&self) -> &str {
+        "PeacockMutator"
+    }
+}
 
+impl<S> Mutator<PeacockInput, S> for PeacockMutator
+where
+    S: HasRand,
+{
+    fn mutate(&mut self, state: &mut S, input: &mut PeacockInput, _stage_idx: i32) -> Result<MutationResult, Error> {
+        let capacity = input.sequence.capacity();
+        let len = state.rand_mut().below(input.sequence.len() as u64 + 1) as usize;
+        let buf = input.sequence.as_mut_ptr();
+        
+        unsafe {
+            let new_len = grammar_mutate.unwrap_unchecked()(buf, len, capacity);
+            debug_assert!(new_len <= capacity);
+            input.sequence.set_len(new_len);
+        }
+        
+        Ok(MutationResult::Mutated)
+    }
+}
+
+/* Harness */
 fn fuzz(args: Args) -> Result<(), Error> {
     const MAP_SIZE: usize = 2_621_440;
     
@@ -190,12 +226,7 @@ fn fuzz(args: Args) -> Result<(), Error> {
     )
     .unwrap();
 
-    let mutator = StdMOptMutator::new(
-        &mut state,
-        havoc_mutations(),
-        7,
-        5,
-    )?;
+    let mutator = PeacockMutator {};
     
     let power = StdPowerMutationalStage::new(mutator);
     
