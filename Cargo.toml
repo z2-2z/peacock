@@ -23,3 +23,11 @@ serde = "1.0"
 libafl = "0.11"
 libafl_bolts = "0.11"
 nix = "0.26"
+
+[[bin]]
+name = "peacock-dump"
+path = "src/bin/dump.rs"
+
+[[bin]]
+name = "peacock-fuzz"
+path = "src/bin/peacock.rs"

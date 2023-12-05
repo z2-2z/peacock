@@ -83,6 +83,18 @@ fn get_function<T: Copy>(lib: &libloading::Library, name: &[u8]) -> T {
     *f
 }
 
+pub fn load_generator<P: AsRef<Path>>(generator_so: P) {
+    let generator_so = generator_so.as_ref();
+    
+    unsafe {
+        let lib = libloading::Library::new(generator_so).expect("Could not load generator.so");
+        grammar_mutate = Some(get_function::<GrammarMutationFunc>(&lib, b"mutate_sequence"));
+        grammar_serialize = Some(get_function::<GrammarSerializationFunc>(&lib, b"serialize_sequence"));
+        grammar_seed = Some(get_function::<GrammarSeedFunc>(&lib, b"seed"));
+        std::mem::forget(lib);
+    }
+}
+
 fn load_grammar(grammar_file: &str, out_dir: &str) {
     let generator_so = PathBuf::from(format!("{}/generator.so", out_dir));
     let c_file = PathBuf::from(format!("{}/generator.c", out_dir));
@@ -99,20 +111,14 @@ fn load_grammar(grammar_file: &str, out_dir: &str) {
         compile_so(&generator_so, &c_file);
     }
     
-    unsafe {
-        let lib = libloading::Library::new(&generator_so).expect("Could not load generator.so");
-        grammar_mutate = Some(get_function::<GrammarMutationFunc>(&lib, b"mutate_sequence"));
-        grammar_serialize = Some(get_function::<GrammarSerializationFunc>(&lib, b"serialize_sequence"));
-        grammar_seed = Some(get_function::<GrammarSeedFunc>(&lib, b"seed"));
-        std::mem::forget(lib);
-    }
+    load_generator(generator_so)
 }
 
 /* Input type */
 static mut SERIALIZATION_BUFFER: [u8; 128 * 1024 * 1024] = [0; 128 * 1024 * 1024];
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash)]
-struct PeacockInput {
+pub struct PeacockInput {
     sequence: Vec<usize>,
 }
 
