@@ -203,8 +203,16 @@ fn fuzz(args: Args) -> Result<(), Error> {
     let output_dir = Path::new(&args.output);
     let queue_dir = output_dir.join("queue");
     let crashes_dir = output_dir.join("crashes");
-    
     const MAP_SIZE: usize = 2_621_440;
+    let seed = current_nanos();
+    let powerschedule = PowerSchedule::EXPLORE;
+    let timeout = Duration::from_secs(10);
+    let signal = str::parse::<Signal>("SIGKILL").unwrap();
+    
+    #[cfg(debug_assertions)]
+    let debug_child = true;
+    #[cfg(not(debug_assertions))]
+    let debug_child = false;
     
     //TODO: tui monitor
     let monitor = SimpleMonitor::new(|s| {
@@ -248,8 +256,6 @@ fn fuzz(args: Args) -> Result<(), Error> {
         timeout_feedback
     );
     
-    let seed = current_nanos();
-    
     unsafe {
         grammar_seed.unwrap_unchecked()(seed as usize);
     };
@@ -269,15 +275,10 @@ fn fuzz(args: Args) -> Result<(), Error> {
     let scheduler = IndexesLenTimeMinimizerScheduler::new(StdWeightedScheduler::with_schedule(
         &mut state,
         &edges_observer,
-        Some(PowerSchedule::EXPLORE),
+        Some(powerschedule),
     ));
     
     let mut fuzzer = StdFuzzer::new(scheduler, feedback, objective);
-    
-    #[cfg(debug_assertions)]
-    let debug_child = true;
-    #[cfg(not(debug_assertions))]
-    let debug_child = false;
     
     let forkserver = ForkserverExecutor::builder()
         .program(&args.cmdline[0])
@@ -288,8 +289,6 @@ fn fuzz(args: Args) -> Result<(), Error> {
         .is_persistent(false)
         .build_dynamic_map(edges_observer, tuple_list!(time_observer))?;
     
-    let timeout = Duration::from_secs(10);
-    let signal = str::parse::<Signal>("SIGKILL").unwrap();
     let mut executor = TimeoutForkserverExecutor::with_signal(forkserver, timeout, signal)?;
     
     state.load_initial_inputs(
