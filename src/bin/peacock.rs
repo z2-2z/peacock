@@ -30,6 +30,8 @@ use peacock_fuzz::{
     backends::C::CGenerator,
 };
 
+const PRELOAD_ENV: &str = "PEACOCK_PRELOAD";
+
 fn mkdir(dir: &str) {
     match std::fs::create_dir(dir) {
         Ok(()) => {},
@@ -231,6 +233,10 @@ fn fuzz(args: Args) -> Result<(), Error> {
         let debug_child = true;
         #[cfg(not(debug_assertions))]
         let debug_child = false;
+        
+        if let Ok(value) = std::env::var(PRELOAD_ENV) {
+            std::env::set_var("LD_PRELOAD", value);
+        }
             
         let mut shmem_provider = UnixShMemProvider::new()?;
         let mut shmem = shmem_provider.new_shmem(MAP_SIZE)?;
