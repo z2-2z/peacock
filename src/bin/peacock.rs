@@ -236,6 +236,7 @@ fn fuzz(args: Args) -> Result<(), Error> {
         
         if let Ok(value) = std::env::var(PRELOAD_ENV) {
             std::env::set_var("LD_PRELOAD", value);
+            std::env::remove_var(PRELOAD_ENV);
         }
             
         let mut shmem_provider = UnixShMemProvider::new()?;
@@ -304,7 +305,6 @@ fn fuzz(args: Args) -> Result<(), Error> {
         let forkserver = ForkserverExecutor::builder()
             .program(&args.cmdline[0])
             .debug_child(debug_child)
-            .shmem_provider(&mut shmem_provider)
             .parse_afl_cmdline(args.cmdline.get(1..).unwrap_or(&[]))
             .coverage_map_size(MAP_SIZE)
             .is_persistent(false)
@@ -346,6 +346,7 @@ fn fuzz(args: Args) -> Result<(), Error> {
         true
     );
     let monitor = TuiMonitor::new(tui);
+    //let monitor = libafl::prelude::SimplePrintingMonitor::new();
     
     let cores = Cores::from_cmdline(&args.cores).expect("Invalid core specification");
     
