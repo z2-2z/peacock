@@ -12,11 +12,11 @@ use libafl::prelude::{
     TimeObserver, MaxMapFeedback, CalibrationStage, feedback_or,
     TimeFeedback, CrashFeedback, StdState, CachedOnDiskCorpus,
     OnDiskCorpus,
-    StdPowerMutationalStage, IndexesLenTimeMinimizerScheduler,
+    StdMutationalStage, IndexesLenTimeMinimizerScheduler,
     StdWeightedScheduler, powersched::PowerSchedule,
     StdFuzzer, ForkserverExecutor, TimeoutForkserverExecutor,
     Fuzzer, HasTargetBytes, Mutator, MutationResult,
-    HasRand,
+    HasRand, feedback_and, TimeoutFeedback,
 };
 use libafl_bolts::prelude::{
     UnixShMemProvider, ShMemProvider, ShMem, AsMutSlice,
@@ -28,7 +28,7 @@ use peacock_fuzz::{
     backends::C::CGenerator,
 };
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
     #[arg(long, value_name = "GRAMMAR")]
@@ -36,6 +36,9 @@ struct Args {
     
     #[arg(short)]
     output: String,
+    
+    #[arg(trailing_var_arg = true, allow_hyphen_values = true, required = true)]
+    cmdline: Vec<String>,
 }
 
 /* Interface to grammar program */
@@ -177,17 +180,22 @@ where
 
 /* Harness */
 fn fuzz(args: Args) -> Result<(), Error> {
+    let output_dir = Path::new(&args.output);
+    let queue_dir = output_dir.join("queue");
+    let crashes_dir = output_dir.join("crashes");
+    
     const MAP_SIZE: usize = 2_621_440;
     
+    //TODO: tui monitor
     let monitor = SimpleMonitor::new(|s| {
         println!("{s}");
     });
     
     let mut mgr = SimpleEventManager::new(monitor);
     
-    let mut shmem_provider = UnixShMemProvider::new().unwrap();
-    let mut shmem = shmem_provider.new_shmem(MAP_SIZE).unwrap();
-    shmem.write_to_env("__AFL_SHM_ID").unwrap();
+    let mut shmem_provider = UnixShMemProvider::new()?;
+    let mut shmem = shmem_provider.new_shmem(MAP_SIZE)?;
+    shmem.write_to_env("__AFL_SHM_ID")?;
     let shmem_buf = shmem.as_mut_slice();
     
     std::env::set_var("AFL_MAP_SIZE", format!("{}", MAP_SIZE));
@@ -201,34 +209,39 @@ fn fuzz(args: Args) -> Result<(), Error> {
     let calibration = CalibrationStage::new(&map_feedback);
     
     let mut feedback = feedback_or!(
-        // New maximization map feedback linked to the edges observer and the feedback state
         map_feedback,
-        // Time feedback, this one does not need a feedback state
         TimeFeedback::with_observer(&time_observer)
     );
     
-    //TODO
-    let mut objective = CrashFeedback::new();
+    let map_feedback = MaxMapFeedback::tracking(&edges_observer, true, false);
+    let crash_feedback = feedback_and!(
+        CrashFeedback::new(),
+        map_feedback
+    );
+    let map_feedback = MaxMapFeedback::tracking(&edges_observer, true, false);
+    let timeout_feedback = feedback_and!(
+        TimeoutFeedback::new(),
+        map_feedback
+    );
+    let mut objective = feedback_or!(
+        crash_feedback,
+        timeout_feedback
+    );
+    
+    let seed = current_nanos();
     
     let mut state = StdState::new(
-        // RNG
-        StdRand::with_seed(current_nanos()),
-        // Corpus that will be evolved, we keep it in memory for performance
-        CachedOnDiskCorpus::<PeacockInput>::new("TODO", 128).unwrap(),
-        // Corpus in which we store solutions (crashes in this example),
-        // on disk so the user can get them after stopping the fuzzer
-        OnDiskCorpus::new("TODO").unwrap(),
-        // States of the feedbacks.
-        // The feedbacks can report the data that should persist in the State.
+        StdRand::with_seed(seed),
+        CachedOnDiskCorpus::<PeacockInput>::new(queue_dir, 128)?,
+        OnDiskCorpus::new(crashes_dir)?,
         &mut feedback,
-        // Same for objective feedbacks
         &mut objective,
-    )
-    .unwrap();
+    )?;
 
     let mutator = PeacockMutator {};
     
-    let power = StdPowerMutationalStage::new(mutator);
+    //let power = StdPowerMutationalStage::new(mutator);
+    let mutational = StdMutationalStage::with_max_iterations(mutator, 0);
     
     let scheduler = IndexesLenTimeMinimizerScheduler::new(StdWeightedScheduler::with_schedule(
         &mut state,
@@ -238,24 +251,29 @@ fn fuzz(args: Args) -> Result<(), Error> {
     
     let mut fuzzer = StdFuzzer::new(scheduler, feedback, objective);
     
+    #[cfg(debug_assertions)]
+    let debug_child = true;
+    #[cfg(not(debug_assertions))]
+    let debug_child = false;
+    
     let forkserver = ForkserverExecutor::builder()
-        .program("TODO")
-        .debug_child(false)
+        .program(&args.cmdline[0])
+        .debug_child(debug_child)
         .shmem_provider(&mut shmem_provider)
-        .parse_afl_cmdline(["TODO"])
+        .parse_afl_cmdline(args.cmdline.get(1..).unwrap_or(&[]))
         .coverage_map_size(MAP_SIZE)
         .is_persistent(false)
-        .build_dynamic_map(edges_observer, tuple_list!(time_observer))
-        .unwrap();
+        .build_dynamic_map(edges_observer, tuple_list!(time_observer))?;
     
     let timeout = Duration::from_secs(10);
     let signal = str::parse::<Signal>("SIGKILL").unwrap();
-    let mut executor = TimeoutForkserverExecutor::with_signal(forkserver, timeout, signal)
-        .expect("Failed to create the executor.");
+    let mut executor = TimeoutForkserverExecutor::with_signal(forkserver, timeout, signal)?;
     
     // load initial inputs
     
-    let mut stages = tuple_list!(calibration, power);
+    // generate if necessary
+    
+    let mut stages = tuple_list!(calibration, mutational);
 
     fuzzer.fuzz_loop(&mut stages, &mut executor, &mut state, &mut mgr)?;
     
