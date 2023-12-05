@@ -4,8 +4,23 @@ use std::process::Command;
 use std::ops::Deref;
 use serde::{Serialize, Deserialize};
 use ahash::RandomState;
+use std::time::Duration;
+use nix::sys::signal::Signal;
 use libafl::prelude::{
-    Input,
+    Input, Error, SimpleMonitor, SimpleEventManager,
+    HitcountsMapObserver, StdMapObserver,
+    TimeObserver, MaxMapFeedback, CalibrationStage, feedback_or,
+    TimeFeedback, CrashFeedback, StdState, CachedOnDiskCorpus,
+    OnDiskCorpus, StdMOptMutator, havoc_mutations,
+    StdPowerMutationalStage, IndexesLenTimeMinimizerScheduler,
+    StdWeightedScheduler, powersched::PowerSchedule,
+    StdFuzzer, ForkserverExecutor, TimeoutForkserverExecutor,
+    Fuzzer, HasTargetBytes,
+};
+use libafl_bolts::prelude::{
+    UnixShMemProvider, ShMemProvider, ShMem, AsMutSlice,
+    current_nanos, StdRand, tuple_list,
+    HasLen, OwnedSlice,
 };
 use peacock_fuzz::{
     grammar::ContextFreeGrammar,
@@ -27,12 +42,9 @@ type GrammarMutationFunc = extern "C" fn(buf: *mut usize, len: usize, capacity: 
 type GrammarSerializationFunc = extern "C" fn(seq: *const usize, seq_len: usize, out: *mut u8, out_len: usize) -> usize;
 type GrammarSeedFunc = extern "C" fn(seed: usize);
 
-#[derive(Clone)]
-struct GrammarInterface {
-    mutate: GrammarMutationFunc,
-    serialize: GrammarSerializationFunc,
-    seed: GrammarSeedFunc,
-}
+static mut grammar_mutate: Option<GrammarMutationFunc> = None;
+static mut grammar_serialize: Option<GrammarSerializationFunc> = None;
+static mut grammar_seed: Option<GrammarSeedFunc> = None;
 
 fn mkdir(dir: &str) {
     match std::fs::create_dir(dir) {
@@ -60,7 +72,7 @@ fn get_function<T: Copy>(lib: &libloading::Library, name: &[u8]) -> T {
     *f
 }
 
-fn load_grammar(grammar_file: &str, out_dir: &str) -> GrammarInterface {
+fn load_grammar(grammar_file: &str, out_dir: &str) {
     let generator_so = PathBuf::from(format!("{}/generator.so", out_dir));
     let c_file = PathBuf::from(format!("{}/generator.c", out_dir));
     
@@ -76,22 +88,19 @@ fn load_grammar(grammar_file: &str, out_dir: &str) -> GrammarInterface {
         compile_so(&generator_so, &c_file);
     }
     
-    let lib = unsafe { libloading::Library::new(&generator_so).expect("Could not load generator.so") };
-    let mutate = get_function::<GrammarMutationFunc>(&lib, b"mutate_sequence");
-    let serialize = get_function::<GrammarSerializationFunc>(&lib, b"serialize_sequence");
-    let seed = get_function::<GrammarSeedFunc>(&lib, b"seed");
-    
-    std::mem::forget(lib);
-    
-    GrammarInterface {
-        mutate,
-        serialize,
-        seed,
+    unsafe {
+        let lib = libloading::Library::new(&generator_so).expect("Could not load generator.so");
+        grammar_mutate = Some(get_function::<GrammarMutationFunc>(&lib, b"mutate_sequence"));
+        grammar_serialize = Some(get_function::<GrammarSerializationFunc>(&lib, b"serialize_sequence"));
+        grammar_seed = Some(get_function::<GrammarSeedFunc>(&lib, b"seed"));
+        std::mem::forget(lib);
     }
 }
 
 /* Input type */
-#[derive(Serialize, Deserialize, Clone, Debug, Hash, Default)]
+static mut SERIALIZATION_BUFFER: [u8; 128 * 1024 * 1024] = [0; 128 * 1024 * 1024];
+
+#[derive(Serialize, Deserialize, Clone, Debug, Hash)]
 struct PeacockInput {
     sequence: Vec<usize>,
 }
@@ -103,14 +112,127 @@ impl Input for PeacockInput {
     }
 }
 
-/* Executor Wrapper */
+impl HasLen for PeacockInput {
+    fn len(&self) -> usize {
+        self.sequence.len()
+    }
+}
+
+impl HasTargetBytes for PeacockInput {
+    fn target_bytes(&self) -> OwnedSlice<u8> {
+        let len = unsafe {
+            grammar_serialize.unwrap_unchecked()(
+                self.sequence.as_ptr(),
+                self.sequence.len(),
+                SERIALIZATION_BUFFER.as_mut_ptr(),
+                SERIALIZATION_BUFFER.len()
+            )
+        };
+        debug_assert!(len < unsafe { SERIALIZATION_BUFFER.len() });
+        unsafe {
+            OwnedSlice::from_raw_parts(SERIALIZATION_BUFFER.as_ptr(), len)
+        }
+    }
+}
+
+//TODO: Default with fixed capaciy
+
+/* Mutator */
+
+
+fn fuzz(args: Args) -> Result<(), Error> {
+    const MAP_SIZE: usize = 2_621_440;
+    
+    let monitor = SimpleMonitor::new(|s| {
+        println!("{s}");
+    });
+    
+    let mut mgr = SimpleEventManager::new(monitor);
+    
+    let mut shmem_provider = UnixShMemProvider::new().unwrap();
+    let mut shmem = shmem_provider.new_shmem(MAP_SIZE).unwrap();
+    shmem.write_to_env("__AFL_SHM_ID").unwrap();
+    let shmem_buf = shmem.as_mut_slice();
+    
+    std::env::set_var("AFL_MAP_SIZE", format!("{}", MAP_SIZE));
+    
+    let edges_observer = unsafe { HitcountsMapObserver::new(StdMapObserver::new("shared_mem", shmem_buf)) };
+    
+    let time_observer = TimeObserver::new("time");
+    
+    let map_feedback = MaxMapFeedback::tracking(&edges_observer, true, false);
+    
+    let calibration = CalibrationStage::new(&map_feedback);
+    
+    let mut feedback = feedback_or!(
+        // New maximization map feedback linked to the edges observer and the feedback state
+        map_feedback,
+        // Time feedback, this one does not need a feedback state
+        TimeFeedback::with_observer(&time_observer)
+    );
+    
+    //TODO
+    let mut objective = CrashFeedback::new();
+    
+    let mut state = StdState::new(
+        // RNG
+        StdRand::with_seed(current_nanos()),
+        // Corpus that will be evolved, we keep it in memory for performance
+        CachedOnDiskCorpus::<PeacockInput>::new("TODO", 128).unwrap(),
+        // Corpus in which we store solutions (crashes in this example),
+        // on disk so the user can get them after stopping the fuzzer
+        OnDiskCorpus::new("TODO").unwrap(),
+        // States of the feedbacks.
+        // The feedbacks can report the data that should persist in the State.
+        &mut feedback,
+        // Same for objective feedbacks
+        &mut objective,
+    )
+    .unwrap();
+
+    let mutator = StdMOptMutator::new(
+        &mut state,
+        havoc_mutations(),
+        7,
+        5,
+    )?;
+    
+    let power = StdPowerMutationalStage::new(mutator);
+    
+    let scheduler = IndexesLenTimeMinimizerScheduler::new(StdWeightedScheduler::with_schedule(
+        &mut state,
+        &edges_observer,
+        Some(PowerSchedule::EXPLORE),
+    ));
+    
+    let mut fuzzer = StdFuzzer::new(scheduler, feedback, objective);
+    
+    let forkserver = ForkserverExecutor::builder()
+        .program("TODO")
+        .debug_child(false)
+        .shmem_provider(&mut shmem_provider)
+        .parse_afl_cmdline(["TODO"])
+        .coverage_map_size(MAP_SIZE)
+        .is_persistent(false)
+        .build_dynamic_map(edges_observer, tuple_list!(time_observer))
+        .unwrap();
+    
+    let timeout = Duration::from_secs(10);
+    let signal = str::parse::<Signal>("SIGKILL").unwrap();
+    let mut executor = TimeoutForkserverExecutor::with_signal(forkserver, timeout, signal)
+        .expect("Failed to create the executor.");
+    
+    // load initial inputs
+    
+    let mut stages = tuple_list!(calibration, power);
+
+    fuzzer.fuzz_loop(&mut stages, &mut executor, &mut state, &mut mgr)?;
+    
+    Ok(())
+}
 
 fn main() {
     let args = Args::parse();
-    let grammar_interface = load_grammar(&args.grammar, &args.output);
-    
-    assert_eq!(
-        (grammar_interface.serialize)(std::ptr::null(), 0, std::ptr::null_mut(), 0),
-        0
-    );
+    load_grammar(&args.grammar, &args.output);
+    fuzz(args).expect("Could not launch fuzzer");
 }
