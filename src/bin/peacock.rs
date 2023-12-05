@@ -250,6 +250,10 @@ fn fuzz(args: Args) -> Result<(), Error> {
     
     let seed = current_nanos();
     
+    unsafe {
+        grammar_seed.unwrap_unchecked()(seed as usize);
+    };
+    
     let mut state = StdState::new(
         StdRand::with_seed(seed),
         CachedOnDiskCorpus::<PeacockInput>::new(&queue_dir, 128)?,
@@ -260,7 +264,6 @@ fn fuzz(args: Args) -> Result<(), Error> {
 
     let mutator = PeacockMutator {};
     
-    //let power = StdPowerMutationalStage::new(mutator);
     let mutational = StdMutationalStage::with_max_iterations(mutator, 0);
     
     let scheduler = IndexesLenTimeMinimizerScheduler::new(StdWeightedScheduler::with_schedule(
