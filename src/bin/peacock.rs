@@ -18,7 +18,7 @@ use libafl::prelude::{
     Fuzzer, HasTargetBytes, Mutator, MutationResult,
     HasRand, feedback_and, TimeoutFeedback, HasCorpus, Corpus,
     Generator, Launcher, EventConfig, tui::ui::TuiUI, tui::TuiMonitor,
-    LlmpRestartingEventManager, ProgressReporter,
+    LlmpRestartingEventManager, ProgressReporter, EventProcessor,
 };
 use libafl_bolts::prelude::{
     UnixShMemProvider, ShMemProvider, ShMem, AsMutSlice,
@@ -29,6 +29,22 @@ use peacock_fuzz::{
     grammar::ContextFreeGrammar,
     backends::C::CGenerator,
 };
+
+fn mkdir(dir: &str) {
+    match std::fs::create_dir(dir) {
+        Ok(()) => {},
+        Err(err) => if err.kind() != std::io::ErrorKind::AlreadyExists {
+            panic!("Could not create directory {}", dir);
+        }
+    }
+}
+
+/// Return true if a is newer than b
+fn newer<P1: AsRef<Path>, P2: AsRef<Path>>(a: P1, b: P2) -> bool {
+    let a = std::fs::metadata(a).unwrap().modified().unwrap();
+    let b = std::fs::metadata(b).unwrap().modified().unwrap();
+    a > b
+}
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -57,15 +73,6 @@ static mut grammar_mutate: Option<GrammarMutationFunc> = None;
 static mut grammar_serialize: Option<GrammarSerializationFunc> = None;
 #[allow(non_upper_case_globals)]
 static mut grammar_seed: Option<GrammarSeedFunc> = None;
-
-fn mkdir(dir: &str) {
-    match std::fs::create_dir(dir) {
-        Ok(()) => {},
-        Err(err) => if err.kind() != std::io::ErrorKind::AlreadyExists {
-            panic!("Could not create directory {}", dir);
-        }
-    }
-}
 
 fn compile_so(output: &Path, input: &Path) {
     let output = Command::new("cc")
@@ -101,7 +108,7 @@ fn load_grammar(grammar_file: &str, out_dir: &str) {
     let c_file = PathBuf::from(format!("{}/generator.c", out_dir));
     
     mkdir(out_dir);
-    if !generator_so.exists() {
+    if !generator_so.exists() || newer(grammar_file, &generator_so) {
         /* Generate code from grammar */
         let cfg = ContextFreeGrammar::builder()
             .peacock_grammar(grammar_file).unwrap()
@@ -309,7 +316,7 @@ fn fuzz(args: Args) -> Result<(), Error> {
             ]
         )?;
         
-        while state.corpus().count() == 0 {
+        if state.corpus().count() == 0 {
             let mut generator = PeacockGenerator {};
             state.generate_initial_inputs(
                 &mut fuzzer,
@@ -318,7 +325,6 @@ fn fuzz(args: Args) -> Result<(), Error> {
                 &mut mgr,
                 4096,
             )?;
-            mgr.maybe_report_progress(&mut state, Duration::from_secs(5))?;
         }
         
         let mut stages = tuple_list!(calibration, mutational);
