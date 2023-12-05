@@ -18,6 +18,7 @@ use libafl::prelude::{
     Fuzzer, HasTargetBytes, Mutator, MutationResult,
     HasRand, feedback_and, TimeoutFeedback, HasCorpus, Corpus,
     Generator, Launcher, EventConfig, tui::ui::TuiUI, tui::TuiMonitor,
+    LlmpRestartingEventManager, ProgressReporter,
 };
 use libafl_bolts::prelude::{
     UnixShMemProvider, ShMemProvider, ShMem, AsMutSlice,
@@ -209,7 +210,7 @@ impl<S> Generator<PeacockInput, S> for PeacockGenerator {
 
 /* Harness */
 fn fuzz(args: Args) -> Result<(), Error> {
-    let mut run_client = |state: Option<_>, mut mgr, _core_id| {
+    let mut run_client = |state: Option<_>, mut mgr: LlmpRestartingEventManager<_, _>, _core_id| {
         let output_dir = Path::new(&args.output);
         let queue_dir = output_dir.join("queue");
         let crashes_dir = output_dir.join("crashes");
@@ -308,7 +309,7 @@ fn fuzz(args: Args) -> Result<(), Error> {
             ]
         )?;
         
-        if state.corpus().count() == 0 {
+        while state.corpus().count() == 0 {
             let mut generator = PeacockGenerator {};
             state.generate_initial_inputs(
                 &mut fuzzer,
@@ -317,6 +318,7 @@ fn fuzz(args: Args) -> Result<(), Error> {
                 &mut mgr,
                 4096,
             )?;
+            mgr.maybe_report_progress(&mut state, Duration::from_secs(5))?;
         }
         
         let mut stages = tuple_list!(calibration, mutational);
