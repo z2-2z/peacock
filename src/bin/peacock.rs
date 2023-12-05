@@ -324,12 +324,12 @@ fn fuzz(args: Args) -> Result<(), Error> {
         
         if state.corpus().count() == 0 {
             let mut generator = PeacockGenerator {};
-            state.generate_initial_inputs(
+            state.generate_initial_inputs_forced(
                 &mut fuzzer,
                 &mut executor,
                 &mut generator,
                 &mut mgr,
-                4096,
+                16,
             )?;
         }
         
