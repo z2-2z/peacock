@@ -16,7 +16,7 @@ thiserror = "1.0"
 ahash = { version = "0.8", default-features = false, features = ["std", "compile-time-rng"] }
 petgraph = "0.6"
 
-# Needed for peacock binary
+# Needed for binaries
 clap = { version = "4.4", features = ["derive"] }
 libloading = "0.8"
 serde = "1.0"
@@ -31,3 +31,7 @@ path = "src/bin/dump.rs"
 [[bin]]
 name = "peacock-fuzz"
 path = "src/bin/peacock.rs"
+
+[[bin]]
+name = "peacock-gen"
+path = "src/bin/generate.rs"
