@@ -10,3 +10,4 @@
 Time to 1 GiB:
 - Peacock: secs=4 nsecs=763573725 => ~205 MiB/s
 - Original Gramatron: secs=17 nsecs=340090343 => ~60 MiB/s
+- LibAFL Gramatron: secs=26 nsecs=26327460838 => ~40 MiB/s

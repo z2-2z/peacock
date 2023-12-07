@@ -1,0 +1,46 @@
+diff --git a/fuzzers/baby_fuzzer_gramatron/src/main.rs b/fuzzers/baby_fuzzer_gramatron/src/main.rs
+index ada8c1df..6a9600cf 100644
+--- a/fuzzers/baby_fuzzer_gramatron/src/main.rs
++++ b/fuzzers/baby_fuzzer_gramatron/src/main.rs
+@@ -106,11 +106,10 @@ pub fn main() {
+     )
+     .expect("Failed to create the Executor");
+ 
+-    let automaton = read_automaton_from_file(PathBuf::from("auto.postcard"));
++    let automaton = read_automaton_from_file(PathBuf::from("grammar.postcard"));
+     let mut generator = GramatronGenerator::new(&automaton);
+ 
+     // Use this code to profile the generator performance
+-    /*
+     use libafl::generators::Generator;
+     use std::collections::HashSet;
+     use std::collections::hash_map::DefaultHasher;
+@@ -122,21 +121,18 @@ pub fn main() {
+         s.finish()
+     }
+ 
+-    let mut set = HashSet::new();
+-    let st = libafl_bolts::current_milliseconds();
+-    let mut b = vec![];
+-    let mut c = 0;
+-    for _ in 0..100000 {
++    let mut b = Vec::with_capacity(128 * 1024 * 1024);
++    let mut generated = 0_usize;
++    let start = std::time::Instant::now();
++    while generated < 1024 * 1024 * 1024 {
+         let i = generator.generate(&mut state).unwrap();
+         i.unparse(&mut b);
+-        set.insert(calculate_hash(&b));
+-        c += b.len();
++        generated += b.len();
+     }
+-    println!("{} / {}", c, libafl_bolts::current_milliseconds() - st);
+-    println!("{} / 100000", set.len());
++    let delta = std::time::Instant::now() - start;
++    println!("secs={} nsecs={}", delta.as_secs(), delta.as_nanos());
+ 
+     return;
+-    */
+ 
+     // Generate 8 initial inputs
+     state
