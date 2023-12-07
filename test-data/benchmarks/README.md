@@ -1,4 +1,5 @@
 # Benchmarks
 
 Baseline: 12k exec/s
-With complex JS grammar from gramatron: 8.5k exec/s (30% overhead)
+Peacock: 9.2k exec/s (24% overhead)
+Original Gramatron: 8.6k exec/s (29% overhead)

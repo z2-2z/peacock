@@ -2,3 +2,4 @@ output/
 .cur_input*
 baseline
 nop
+nop-gramatron
