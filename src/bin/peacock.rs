@@ -48,6 +48,22 @@ fn newer<P1: AsRef<Path>, P2: AsRef<Path>>(a: P1, b: P2) -> bool {
     a > b
 }
 
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
+enum GrammarFormat {
+    Peacock,
+    Gramatron,
+}
+
+impl std::fmt::Display for GrammarFormat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GrammarFormat::Peacock => write!(f, "peacock"),
+            GrammarFormat::Gramatron => write!(f, "gramatron"),
+        }
+    }
+}
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -59,6 +75,9 @@ struct Args {
     
     #[arg(short)]
     output: String,
+    
+    #[arg(long, default_value_t = GrammarFormat::Peacock)]
+    format: GrammarFormat,
     
     #[arg(trailing_var_arg = true, allow_hyphen_values = true, required = true)]
     cmdline: Vec<String>,
@@ -105,16 +124,22 @@ pub fn load_generator<P: AsRef<Path>>(generator_so: P) {
     }
 }
 
-fn load_grammar(grammar_file: &str, out_dir: &str) {
+fn load_grammar(grammar_file: &str, grammar_format: GrammarFormat, out_dir: &str) {
     let generator_so = PathBuf::from(format!("{}/generator.so", out_dir));
     let c_file = PathBuf::from(format!("{}/generator.c", out_dir));
     
     mkdir(out_dir);
     if !generator_so.exists() || newer(grammar_file, &generator_so) {
         /* Generate code from grammar */
-        let cfg = ContextFreeGrammar::builder()
-            .peacock_grammar(grammar_file).unwrap()
-            .build().unwrap();
+        let mut cfg = ContextFreeGrammar::builder();
+        
+        match grammar_format {
+            GrammarFormat::Peacock => cfg = cfg.peacock_grammar(grammar_file).unwrap(),
+            GrammarFormat::Gramatron => cfg = cfg.gramatron_grammar(grammar_file).unwrap(),
+        }
+        
+        let cfg = cfg.build().unwrap();
+        
         CGenerator::new(&c_file).generate(cfg);
         
         /* Compile code into generator */
@@ -366,6 +391,6 @@ fn fuzz(args: Args) -> Result<(), Error> {
 
 fn main() {
     let args = Args::parse();
-    load_grammar(&args.grammar, &args.output);
+    load_grammar(&args.grammar, args.format, &args.output);
     fuzz(args).expect("Could not launch fuzzer");
 }
