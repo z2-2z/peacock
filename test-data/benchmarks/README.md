@@ -9,3 +9,4 @@
 ## Raw throughput
 Time to 1 GiB:
 - Peacock: secs=4 nsecs=763573725 => ~205 MiB/s
+- Original Gramatron: secs=17 nsecs=340090343 => ~60 MiB/s

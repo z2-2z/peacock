@@ -1,0 +1,56 @@
+diff --git a/src/gramfuzz-mutator/test.c b/src/gramfuzz-mutator/test.c
+index de00f9a..ed1fb7b 100644
+--- a/src/gramfuzz-mutator/test.c
++++ b/src/gramfuzz-mutator/test.c
+@@ -1,5 +1,6 @@
+ /* This is the testing module for Gramatron
+  */
++#include <time.h>
+ #include "afl-fuzz.h"
+ #define NUMINPUTS 50 
+ 
+@@ -99,6 +100,34 @@ void SanityCheck(char *automaton_path) {
+     }
+ }
+ 
++void Benchmark(char* automaton_path) {
++    state* pda = create_pda(NULL, automaton_path);
++    size_t generated = 0;
++    struct timespec start, end;
++
++    clock_gettime(CLOCK_MONOTONIC, &start);
++
++    while (generated < 1 * 1024 * 1024 * 1024) {
++	Array* walk = gen_input(pda, NULL);
++	char* input = unparse_walk(walk);
++	generated += walk->inputlen;
++	free(walk->start);
++	free(walk);
++	free(input);
++    }
++
++    clock_gettime(CLOCK_MONOTONIC, &end);
++
++    time_t secs = end.tv_sec - start.tv_sec;
++    long  nsecs = end.tv_nsec - start.tv_nsec;
++    
++    if (nsecs < 0) {
++        secs -= 1;
++        nsecs += 1000000000;
++    }
++    
++    printf("secs=%lu nsecs=%ld\n", secs, nsecs);
++}
+ 
+ int main(int argc, char*argv[]) {
+     char *mode;
+@@ -121,6 +150,9 @@ int main(int argc, char*argv[]) {
+     if (! strcmp(mode, "SanityCheck")) {
+         SanityCheck(automaton_path);
+     }
++    else if (! strcmp(mode, "Benchmark")) {
++    	Benchmark(automaton_path);
++    }	
+     else {
+         printf("\nUnrecognized mode");
+         return -1;
