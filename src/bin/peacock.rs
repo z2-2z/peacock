@@ -16,9 +16,9 @@ use libafl::prelude::{
     StdWeightedScheduler, powersched::PowerSchedule,
     StdFuzzer, ForkserverExecutor, TimeoutForkserverExecutor,
     Fuzzer, HasTargetBytes, Mutator, MutationResult,
-    HasRand, feedback_and, TimeoutFeedback, HasCorpus, Corpus,
+    HasRand, TimeoutFeedback, HasCorpus, Corpus,
     Generator, Launcher, EventConfig, tui::ui::TuiUI, tui::TuiMonitor,
-    LlmpRestartingEventManager, ProgressReporter, EventProcessor,
+    LlmpRestartingEventManager,
 };
 use libafl_bolts::prelude::{
     UnixShMemProvider, ShMemProvider, ShMem, AsMutSlice,
@@ -284,19 +284,9 @@ fn fuzz(args: Args) -> Result<(), Error> {
             TimeFeedback::with_observer(&time_observer)
         );
         
-        let map_feedback = MaxMapFeedback::tracking(&edges_observer, true, false);
-        let crash_feedback = feedback_and!(
-            CrashFeedback::new(),
-            map_feedback
-        );
-        let map_feedback = MaxMapFeedback::tracking(&edges_observer, true, false);
-        let timeout_feedback = feedback_and!(
-            TimeoutFeedback::new(),
-            map_feedback
-        );
         let mut objective = feedback_or!(
-            crash_feedback,
-            timeout_feedback
+            CrashFeedback::new(),
+            TimeoutFeedback::new()
         );
         
         unsafe {
@@ -389,7 +379,7 @@ fn fuzz(args: Args) -> Result<(), Error> {
     }
 }
 
-fn main() {
+pub fn main() {
     let args = Args::parse();
     load_grammar(&args.grammar, args.format, &args.output);
     fuzz(args).expect("Could not launch fuzzer");
