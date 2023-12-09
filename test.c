@@ -130,3 +130,47 @@ size_t serialize_sequence (size_t* seq, size_t seq_len, unsigned char* out, size
     
     return serialize_seq_ENTRYPOINT(seq, seq_len, out, out_len, &step);
 }
+
+
+static int unparse_sequence_nontermXYZ (Sequece* seq, unsigned char* input, size_t input_len) {
+    size_t seq_idx = seq->len;
+    
+    if (UNLIKELY(seq_idx >= seq->capacity)) {
+        return 1;
+    }
+    
+    seq->len += 1;
+    
+    // Single rule
+    do {
+        unsigned char* tmp_input = input;
+        size_t tmp_len = input_len;
+        
+        // try item 1: terminal
+        if (UNLIKELY(tmp_len < sizeof(TERMX)) || __builtin_memcmp(tmp_input, TERMX, sizeof(TERMX)) != 0) {
+            break;
+        }
+        tmp_input += sizeof(TERMX); tmp_len -= sizeof(TERMX);
+        
+        // try item 2: non-terminal
+        if (!unparse_sequence_nontermABC(seq, tmp_input, tmp_len)) {
+            break;
+        }
+        
+        seq->buf[seq_idx] = 0; // index of rule
+        return 1;
+    } while(0);
+    
+    seq->len -= 1;
+    return 0;
+}
+
+size_t unparse_sequence (size_t* seq_buf, size_t seq_capacity, unsigned char* input, size_t input_len) {
+    Sequence seq = {
+        .buf = seq_buf,
+        .len = 0,
+        .capacity = seq_capacity,
+    };
+    unparse_sequence_nontermXYZ(&seq, input, input_len);
+    return seq.len;
+}
