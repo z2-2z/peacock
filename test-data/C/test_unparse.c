@@ -9,7 +9,7 @@
 
 #define SEQ_LEN 4096
 
-unsigned char* input = "var a=((((-9223372036854775808/-1++))));\n";
+unsigned char* input = "var a=((((-9223372036854775808/-1++))));\\n";
 
 int main (void) {
     size_t input_len = strlen(input);
@@ -27,4 +27,7 @@ int main (void) {
     size_t out_len = serialize_sequence(sequence, seq_len, output, input_len);
     printf("input_len=%d out_len=%d\n", input_len, out_len);
     assert(out_len == input_len);
+    
+    output[out_len] = 0;
+    printf("%s\n", output);
 }
