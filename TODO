@@ -7,4 +7,5 @@
 - grammar merger tool
 - lastly: write docs
 - test libfuzzer integration
-- multiple grammars in tools
+- comment function in CGenerator: headline, annotation
+- run static code analyzers over generated C code

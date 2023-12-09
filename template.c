@@ -1,3 +1,5 @@
+#error "This is just for brainstorming"
+
 typedef struct {
     size_t* buf;
     size_t len;
@@ -132,7 +134,7 @@ size_t serialize_sequence (size_t* seq, size_t seq_len, unsigned char* out, size
 }
 
 
-static int unparse_sequence_nontermXYZ (Sequece* seq, unsigned char* input, size_t input_len) {
+static int unparse_sequence_nontermXYZ (Sequence* seq, unsigned char* input, size_t input_len) {
     size_t seq_idx = seq->len;
     
     if (UNLIKELY(seq_idx >= seq->capacity)) {

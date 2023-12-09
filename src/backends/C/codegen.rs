@@ -508,10 +508,110 @@ fn emit_header(mut outfile: File) {
 size_t mutate_sequence (size_t* buf, size_t len, size_t capacity);
 size_t serialize_sequence (size_t* seq, size_t seq_len, unsigned char* out, size_t out_len);
 void seed_generator (size_t new_seed);
+size_t unparse_sequence (size_t* seq_buf, size_t seq_capacity, unsigned char* input, size_t input_len);
 
 #endif /* __PEACOCK_GENERATOR_H */
 "
     ).expect("Could not write to header file");
+}
+
+fn emit_unparsing_declarations(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
+    fmt.write("/* Forward declarations for unparsing functions */");
+    
+    for nonterm in grammar.rules().keys() {
+        fmt.write(format!("static int unparse_seq_nonterm{} (Sequence* seq, unsigned char* input, size_t input_len);", *nonterm));
+    }
+    
+    fmt.blankline();
+}
+
+fn emit_unparsing_function(nonterm: usize, rules: &[Vec<LLSymbol>], grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
+    fmt.write(format!("// This is the unparsing function for non-terminal {:?}", grammar.nonterminals()[nonterm]));
+    fmt.write(format!("static int unparse_seq_nonterm{} (Sequence* seq, unsigned char* input, size_t input_len) {{", nonterm));
+    fmt.indent();
+    
+    fmt.write("size_t seq_idx = seq->len;");
+    fmt.blankline();
+    fmt.write("if (UNLIKELY(seq_idx >= seq->capacity)) {");
+    fmt.indent();
+    fmt.write("return 1;");
+    fmt.unindent();
+    fmt.write("}");
+    fmt.blankline();
+    fmt.write("seq->len += 1;");
+    fmt.blankline();
+    
+    for (i, rule) in rules.iter().enumerate() {
+        fmt.write(format!("// Rule #{}", i));
+        fmt.write("do {");
+        fmt.indent();
+        fmt.write("unsigned char* tmp_input = input;");
+        fmt.write("size_t tmp_len = input_len;");
+        fmt.blankline();
+        
+        for symbol in rule {
+            match symbol {
+                LLSymbol::Terminal(term) => {
+                    fmt.write(format!("if (UNLIKELY(tmp_len < sizeof(TERM{0})) || __builtin_memcmp(tmp_input, TERM{0}, sizeof(TERM{0})) != 0) {{", term.id()));
+                    fmt.indent();
+                    fmt.write("break;");
+                    fmt.unindent();
+                    fmt.write("}");
+                    fmt.write(format!("tmp_input += sizeof(TERM{0}); tmp_len -= sizeof(TERM{0});", term.id()));
+                    fmt.blankline();
+                },
+                LLSymbol::NonTerminal(nonterm) => {
+                    fmt.write(format!("if (!unparse_seq_nonterm{}(seq, tmp_input, tmp_len)) {{", nonterm.id()));
+                    fmt.indent();
+                    fmt.write("break;");
+                    fmt.unindent();
+                    fmt.write("}");
+                    fmt.blankline();
+                },
+            }
+        }
+        
+        fmt.write(format!("seq->buf[seq_idx] = {};", i));
+        fmt.write("return 1;");
+        fmt.unindent();
+        fmt.write("} while (0);");
+        fmt.blankline();
+    }
+    
+    fmt.write("seq->len -= 1;");
+    fmt.write("return 0;");
+    
+    fmt.unindent();
+    fmt.write("}");
+    fmt.blankline();
+}
+
+fn emit_unparsing_entrypoint(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
+    fmt.write("EXPORT_FUNCTION");
+    fmt.write("size_t unparse_sequence (size_t* seq_buf, size_t seq_capacity, unsigned char* input, size_t input_len) {");
+    fmt.indent();
+    fmt.write("Sequence seq = {");
+    fmt.indent();
+    fmt.write(".buf = seq_buf,");
+    fmt.write(".len = 0,");
+    fmt.write(".capacity = seq_capacity,");
+    fmt.unindent();
+    fmt.write("};");
+    fmt.write(format!("unparse_seq_nonterm{}(&seq, input, input_len);", grammar.entrypoint().id()));
+    fmt.write("return seq.len;");
+    fmt.unindent();
+    fmt.write("}");
+    fmt.blankline();
+}
+
+fn emit_unparsing_code(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
+    emit_unparsing_declarations(grammar, fmt);
+    
+    for (nonterm, rules) in grammar.rules() {
+        emit_unparsing_function(*nonterm, rules, grammar, fmt);
+    }
+    
+    emit_unparsing_entrypoint(grammar, fmt);
 }
 
 pub struct CGenerator {
@@ -542,6 +642,7 @@ impl CGenerator {
         emit_rand(&mut formatter);
         emit_mutation_code(&grammar, &mut formatter);
         emit_serialization_code(&grammar, &mut formatter);
+        emit_unparsing_code(&grammar, &mut formatter);
         
         if self.header {
             self.outfile.set_extension("h");
