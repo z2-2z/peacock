@@ -119,7 +119,7 @@ pub fn load_generator<P: AsRef<Path>>(generator_so: P) {
         let lib = libloading::Library::new(generator_so).expect("Could not load generator.so");
         grammar_mutate = Some(get_function::<GrammarMutationFunc>(&lib, b"mutate_sequence"));
         grammar_serialize = Some(get_function::<GrammarSerializationFunc>(&lib, b"serialize_sequence"));
-        grammar_seed = Some(get_function::<GrammarSeedFunc>(&lib, b"seed"));
+        grammar_seed = Some(get_function::<GrammarSeedFunc>(&lib, b"seed_generator"));
         std::mem::forget(lib);
     }
 }

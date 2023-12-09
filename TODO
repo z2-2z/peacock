@@ -6,7 +6,5 @@
 - json backend
 - grammar merger tool
 - lastly: write docs
-- seed -> seed_generator
 - test libfuzzer integration
-- mutate_sequence first argument size_t*
-- only set new entrypoint if it has more than one rule
+- multiple grammars in tools

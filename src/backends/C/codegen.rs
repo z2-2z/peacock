@@ -52,7 +52,6 @@ fn rules_have_terminals(rules: &[Vec<LLSymbol>]) -> bool {
 
 fn emit_headers(fmt: &mut CFormatter<File>) {
     fmt.write("#include <stddef.h>");
-    fmt.write("#include <stdint.h>");
     fmt.blankline();
 }
 
@@ -116,7 +115,7 @@ fn emit_rand(fmt: &mut CFormatter<File>) {
     
     fmt.write("#ifndef DISABLE_seed");
     fmt.write("EXPORT_FUNCTION");
-    fmt.write("void seed (size_t new_seed) {");
+    fmt.write("void seed_generator (size_t new_seed) {");
     fmt.indent();
     fmt.write("if (!new_seed) {");
     fmt.indent();
@@ -128,13 +127,13 @@ fn emit_rand(fmt: &mut CFormatter<File>) {
     fmt.unindent();
     fmt.write("}");
     fmt.write("#else");
-    fmt.write("void seed (size_t);");
+    fmt.write("void seed_generator (size_t);");
     fmt.write("#endif");
     fmt.blankline();
 }
 
 fn emit_mutation_types(fmt: &mut CFormatter<File>) {
-    fmt.write("// Used by mutation functions to represent a sequence of non-terminals");
+    fmt.write("// Used by mutation functions to represent a sequence of non-terminals and terminals");
     fmt.write("typedef struct {");
     fmt.indent();
     fmt.write("size_t* buf;");
@@ -276,7 +275,7 @@ fn emit_mutation_function(nonterm: usize, rules: &Vec<Vec<LLSymbol>>, grammar: &
 
 fn emit_mutation_entrypoint(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
     fmt.write("EXPORT_FUNCTION");
-    fmt.write("size_t mutate_sequence (void* buf, size_t len, size_t capacity) {");
+    fmt.write("size_t mutate_sequence (size_t* buf, size_t len, size_t capacity) {");
     fmt.indent();
     
     fmt.write("if (UNLIKELY(!buf || !capacity)) {");
@@ -288,7 +287,7 @@ fn emit_mutation_entrypoint(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File
     
     fmt.write("Sequence seq = {");
     fmt.indent();
-    fmt.write(".buf = (size_t*) buf,");
+    fmt.write(".buf = buf,");
     fmt.write(".len = len,");
     fmt.write(".capacity = capacity,");
     fmt.unindent();
@@ -506,9 +505,9 @@ fn emit_header(mut outfile: File) {
 
 #include <stddef.h>
 
-size_t mutate_sequence (void* buf, size_t len, size_t capacity);
+size_t mutate_sequence (size_t* buf, size_t len, size_t capacity);
 size_t serialize_sequence (size_t* seq, size_t seq_len, unsigned char* out, size_t out_len);
-void seed (size_t new_seed);
+void seed_generator (size_t new_seed);
 
 #endif /* __PEACOCK_GENERATOR_H */
 "
