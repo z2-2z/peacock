@@ -134,7 +134,7 @@ size_t serialize_sequence (size_t* seq, size_t seq_len, unsigned char* out, size
 }
 
 
-static int unparse_sequence_nontermXYZ (Sequence* seq, unsigned char* input, size_t input_len) {
+static int unparse_sequence_nontermXYZ (Sequence* seq, unsigned char* input, size_t input_len, size_t* cursor) {
     size_t seq_idx = seq->len;
     
     if (UNLIKELY(seq_idx >= seq->capacity)) {
@@ -145,20 +145,20 @@ static int unparse_sequence_nontermXYZ (Sequence* seq, unsigned char* input, siz
     
     // Single rule
     do {
-        unsigned char* tmp_input = input;
-        size_t tmp_len = input_len;
+        size_t tmp_cursor = *cursor;
         
         // try item 1: terminal
-        if (UNLIKELY(tmp_len < sizeof(TERMX)) || __builtin_memcmp(tmp_input, TERMX, sizeof(TERMX)) != 0) {
+        if (UNLIKELY(input_len - tmp_cursor < sizeof(TERMX)) || __builtin_memcmp(&input[tmp_cursor], TERMX, sizeof(TERMX)) != 0) {
             break;
         }
-        tmp_input += sizeof(TERMX); tmp_len -= sizeof(TERMX);
+        tmp_cursor += sizeof(TERMX);
         
         // try item 2: non-terminal
-        if (!unparse_sequence_nontermABC(seq, tmp_input, tmp_len)) {
+        if (!unparse_sequence_nontermABC(seq, input, input_len, &tmp_cursor)) {
             break;
         }
         
+        *cursor = tmp_cursor;
         seq->buf[seq_idx] = 0; // index of rule
         return 1;
     } while(0);
@@ -173,6 +173,7 @@ size_t unparse_sequence (size_t* seq_buf, size_t seq_capacity, unsigned char* in
         .len = 0,
         .capacity = seq_capacity,
     };
-    unparse_sequence_nontermXYZ(&seq, input, input_len);
+    size_t cursor = 0;
+    unparse_sequence_nontermXYZ(&seq, input, input_len, &cursor);
     return seq.len;
 }

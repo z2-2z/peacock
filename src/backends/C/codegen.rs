@@ -303,6 +303,7 @@ fn emit_mutation_entrypoint(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File
     
     fmt.unindent();
     fmt.write("}");
+    fmt.blankline();
 }
 
 fn emit_mutation_code(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
@@ -482,6 +483,7 @@ fn emit_serialization_entrypoint(grammar: &LowLevelGrammar, fmt: &mut CFormatter
     fmt.write(format!("return serialize_seq_nonterm{}(seq, seq_len, out, out_len, &step);", grammar.entrypoint().id()));
     fmt.unindent();
     fmt.write("}");
+    fmt.blankline();
 }
 
 fn emit_serialization_code(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
@@ -518,7 +520,7 @@ fn emit_unparsing_declarations(grammar: &LowLevelGrammar, fmt: &mut CFormatter<F
     fmt.write("/* Forward declarations for unparsing functions */");
     
     for nonterm in grammar.rules().keys() {
-        fmt.write(format!("static int unparse_seq_nonterm{} (Sequence* seq, unsigned char* input, size_t input_len);", *nonterm));
+        fmt.write(format!("static int unparse_seq_nonterm{} (Sequence*, unsigned char*, size_t, size_t*);", *nonterm));
     }
     
     fmt.blankline();
@@ -526,7 +528,7 @@ fn emit_unparsing_declarations(grammar: &LowLevelGrammar, fmt: &mut CFormatter<F
 
 fn emit_unparsing_function(nonterm: usize, rules: &[Vec<LLSymbol>], grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
     fmt.write(format!("// This is the unparsing function for non-terminal {:?}", grammar.nonterminals()[nonterm]));
-    fmt.write(format!("static int unparse_seq_nonterm{} (Sequence* seq, unsigned char* input, size_t input_len) {{", nonterm));
+    fmt.write(format!("static int unparse_seq_nonterm{} (Sequence* seq, unsigned char* input, size_t input_len, size_t* cursor) {{", nonterm));
     fmt.indent();
     
     fmt.write("size_t seq_idx = seq->len;");
@@ -544,23 +546,22 @@ fn emit_unparsing_function(nonterm: usize, rules: &[Vec<LLSymbol>], grammar: &Lo
         fmt.write(format!("// Rule #{}", i));
         fmt.write("do {");
         fmt.indent();
-        fmt.write("unsigned char* tmp_input = input;");
-        fmt.write("size_t tmp_len = input_len;");
+        fmt.write("size_t tmp_cursor = *cursor;");
         fmt.blankline();
         
         for symbol in rule {
             match symbol {
                 LLSymbol::Terminal(term) => {
-                    fmt.write(format!("if (UNLIKELY(tmp_len < sizeof(TERM{0})) || __builtin_memcmp(tmp_input, TERM{0}, sizeof(TERM{0})) != 0) {{", term.id()));
+                    fmt.write(format!("if (UNLIKELY(input_len - tmp_cursor < sizeof(TERM{0})) || __builtin_memcmp(&input[tmp_cursor], TERM{0}, sizeof(TERM{0})) != 0) {{", term.id()));
                     fmt.indent();
                     fmt.write("break;");
                     fmt.unindent();
                     fmt.write("}");
-                    fmt.write(format!("tmp_input += sizeof(TERM{0}); tmp_len -= sizeof(TERM{0});", term.id()));
+                    fmt.write(format!("tmp_cursor += sizeof(TERM{0});", term.id()));
                     fmt.blankline();
                 },
                 LLSymbol::NonTerminal(nonterm) => {
-                    fmt.write(format!("if (!unparse_seq_nonterm{}(seq, tmp_input, tmp_len)) {{", nonterm.id()));
+                    fmt.write(format!("if (!unparse_seq_nonterm{}(seq, input, input_len, &tmp_cursor)) {{", nonterm.id()));
                     fmt.indent();
                     fmt.write("break;");
                     fmt.unindent();
@@ -570,6 +571,7 @@ fn emit_unparsing_function(nonterm: usize, rules: &[Vec<LLSymbol>], grammar: &Lo
             }
         }
         
+        fmt.write("*cursor = tmp_cursor;");
         fmt.write(format!("seq->buf[seq_idx] = {};", i));
         fmt.write("return 1;");
         fmt.unindent();
@@ -596,7 +598,8 @@ fn emit_unparsing_entrypoint(grammar: &LowLevelGrammar, fmt: &mut CFormatter<Fil
     fmt.write(".capacity = seq_capacity,");
     fmt.unindent();
     fmt.write("};");
-    fmt.write(format!("unparse_seq_nonterm{}(&seq, input, input_len);", grammar.entrypoint().id()));
+    fmt.write("size_t cursor = 0;");
+    fmt.write(format!("unparse_seq_nonterm{}(&seq, input, input_len, &cursor);", grammar.entrypoint().id()));
     fmt.write("return seq.len;");
     fmt.unindent();
     fmt.write("}");
