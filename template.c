@@ -168,6 +168,10 @@ static int unparse_sequence_nontermXYZ (Sequence* seq, unsigned char* input, siz
 }
 
 size_t unparse_sequence (size_t* seq_buf, size_t seq_capacity, unsigned char* input, size_t input_len) {
+    if (UNLIKELY(!seq_buf || !seq_capacity || !input || !input_len)) {
+        return 0;
+    }
+    
     Sequence seq = {
         .buf = seq_buf,
         .len = 0,

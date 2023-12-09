@@ -283,7 +283,6 @@ fn emit_mutation_entrypoint(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File
     fmt.write("return 0;");
     fmt.unindent();
     fmt.write("}");
-    fmt.blankline();
     
     fmt.write("Sequence seq = {");
     fmt.indent();
@@ -294,11 +293,7 @@ fn emit_mutation_entrypoint(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File
     fmt.write("};");
     
     fmt.write("size_t step = 0;");
-    fmt.blankline();
-    
     fmt.write(format!("mutate_seq_nonterm{}(&seq, &step);", grammar.entrypoint().id()));
-    fmt.blankline();
-    
     fmt.write("return seq.len;");
     
     fmt.unindent();
@@ -475,11 +470,8 @@ fn emit_serialization_entrypoint(grammar: &LowLevelGrammar, fmt: &mut CFormatter
     fmt.write("return 0;");
     fmt.unindent();
     fmt.write("}");
-    fmt.blankline();
     
     fmt.write("size_t step = 0;");
-    fmt.blankline();
-    
     fmt.write(format!("return serialize_seq_nonterm{}(seq, seq_len, out, out_len, &step);", grammar.entrypoint().id()));
     fmt.unindent();
     fmt.write("}");
@@ -591,6 +583,13 @@ fn emit_unparsing_entrypoint(grammar: &LowLevelGrammar, fmt: &mut CFormatter<Fil
     fmt.write("EXPORT_FUNCTION");
     fmt.write("size_t unparse_sequence (size_t* seq_buf, size_t seq_capacity, unsigned char* input, size_t input_len) {");
     fmt.indent();
+    
+    fmt.write("if (UNLIKELY(!seq_buf || !seq_capacity || !input || !input_len)) {");
+    fmt.indent();
+    fmt.write("return 0;");
+    fmt.unindent();
+    fmt.write("}");
+    
     fmt.write("Sequence seq = {");
     fmt.indent();
     fmt.write(".buf = seq_buf,");
@@ -599,8 +598,15 @@ fn emit_unparsing_entrypoint(grammar: &LowLevelGrammar, fmt: &mut CFormatter<Fil
     fmt.unindent();
     fmt.write("};");
     fmt.write("size_t cursor = 0;");
-    fmt.write(format!("unparse_seq_nonterm{}(&seq, input, input_len, &cursor);", grammar.entrypoint().id()));
+    fmt.write(format!("if (!unparse_seq_nonterm{}(&seq, input, input_len, &cursor)) {{", grammar.entrypoint().id()));
+    fmt.indent();
+    fmt.write("return 0;");
+    fmt.unindent();
+    fmt.write("} else { ");
+    fmt.indent();
     fmt.write("return seq.len;");
+    fmt.unindent();
+    fmt.write("}");
     fmt.unindent();
     fmt.write("}");
     fmt.blankline();
