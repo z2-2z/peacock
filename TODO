@@ -5,6 +5,6 @@
 - components
 - json backend
 - grammar merger tool
-- bench mutation performance
 - lastly: write docs
 - seed -> seed_generator
+- test libfuzzer integration
