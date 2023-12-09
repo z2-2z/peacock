@@ -1,2 +1,10 @@
 - compatibility with grammars of other fuzzers (nautilus)
 - feature flags for backends and frontends
+- unparser
+	- load inputs from disk by checking filename. "peacock-raw" is serialized otherwise unparse
+- components
+- json backend
+- grammar merger tool
+- bench mutation performance
+- lastly: write docs
+- seed -> seed_generator
