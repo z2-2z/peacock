@@ -310,6 +310,38 @@ impl ContextFreeGrammar {
         
         self.entrypoint = nonterm;
     }
+    
+    pub(crate) fn count_entrypoint_rules(&self) -> usize {
+        let mut count = 0;
+        
+        for rule in &self.rules {
+            if rule.lhs().id() == self.entrypoint.id() {
+                count += 1;
+            }
+        }
+        
+        count
+    }
+    
+    pub(crate) fn is_in_gnf(&self) -> bool {
+        for rule in &self.rules {
+            let rhs = rule.rhs();
+            
+            if rhs[0].is_non_terminal() {
+                return false;
+            }
+            
+            if let Some(symbols) = rhs.get(1..) {
+                for symbol in symbols {
+                    if symbol.is_terminal() {
+                        return false;
+                    }
+                }
+            }
+        }
+        
+        true
+    }
 }
 
 #[cfg(test)]

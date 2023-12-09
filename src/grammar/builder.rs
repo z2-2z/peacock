@@ -93,13 +93,18 @@ impl GrammarBuilder {
             cfg.remove_duplicate_rules();
             cfg.remove_unit_rules();
             cfg.remove_unused_rules();
-            cfg.remove_mixed_rules();
-            cfg.break_rules();
-            cfg.convert_to_gnf();
-            cfg.remove_unused_rules();
+            
+            if !cfg.is_in_gnf() {
+                cfg.remove_mixed_rules();
+                cfg.break_rules();
+                cfg.convert_to_gnf();
+                cfg.remove_unused_rules();
+            }
         }
         
-        cfg.set_new_entrypoint();
+        if cfg.count_entrypoint_rules() > 1 {
+            cfg.set_new_entrypoint();
+        }
         
         Ok(cfg)
     }
