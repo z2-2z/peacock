@@ -132,8 +132,8 @@ fn emit_rand(fmt: &mut CFormatter<File>) {
     fmt.blankline();
 }
 
-fn emit_mutation_types(fmt: &mut CFormatter<File>) {
-    fmt.write("// Used by mutation functions to represent a sequence of non-terminals and terminals");
+fn emit_types(fmt: &mut CFormatter<File>) {
+    fmt.write("// Used to represent a sequence of rules");
     fmt.write("typedef struct {");
     fmt.indent();
     fmt.write("size_t* buf;");
@@ -306,7 +306,6 @@ fn emit_mutation_entrypoint(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File
 }
 
 fn emit_mutation_code(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
-    emit_mutation_types(fmt);
     emit_mutation_declarations(grammar, fmt);
     
     for (nonterm, rules) in grammar.rules() {
@@ -639,6 +638,7 @@ impl CGenerator {
         
         emit_headers(&mut formatter);
         emit_macros(&mut formatter);
+        emit_types(&mut formatter);
         emit_rand(&mut formatter);
         emit_mutation_code(&grammar, &mut formatter);
         emit_serialization_code(&grammar, &mut formatter);
