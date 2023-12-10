@@ -6,7 +6,7 @@ use libafl::prelude::{
 };
 use libafl_bolts::prelude::AsSlice;
 
-mod peacock;
+pub mod peacock;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
