@@ -51,6 +51,9 @@ fn rules_have_terminals(rules: &[Vec<LLSymbol>]) -> bool {
 }
 
 fn emit_headers(fmt: &mut CFormatter<File>) {
+    #[cfg(debug_codegen)]
+    fmt.write("#include <stdio.h>");
+    
     fmt.write("#include <stddef.h>");
     fmt.blankline();
 }
@@ -278,6 +281,11 @@ fn emit_mutation_entrypoint(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File
     fmt.write("size_t mutate_sequence (size_t* buf, size_t len, size_t capacity) {");
     fmt.indent();
     
+    #[cfg(debug_codegen)]
+    {
+        fmt.write("printf(\"Calling mutate_sequence(%p, %lu, %lu)\\n\", buf, len, capacity);");
+    }
+    
     fmt.write("if (UNLIKELY(!buf || !capacity)) {");
     fmt.indent();
     fmt.write("return 0;");
@@ -446,6 +454,11 @@ fn emit_serialization_function(nonterm: usize, rules: &Vec<Vec<LLSymbol>>, gramm
     fmt.write(format!("// This is the serialization function for non-terminal {:?}", grammar.nonterminals()[nonterm]));
     fmt.write(format!("static size_t serialize_seq_nonterm{} (size_t* seq, size_t seq_len, unsigned char* out, size_t out_len, size_t* step) {{", nonterm));
     fmt.indent();
+    
+    #[cfg(debug_codegen)]
+    {
+        fmt.write(format!("printf(\"Serializing %s (%lu/%lu)\\n\", {:?}, *step + 1, seq_len);", grammar.nonterminals()[nonterm]));
+    }
     
     if rules.is_empty() {
         unreachable!()

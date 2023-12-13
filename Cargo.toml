@@ -37,3 +37,10 @@ path = "src/bin/peacock.rs"
 [[bin]]
 name = "peacock-gen"
 path = "src/bin/generate.rs"
+
+[features]
+default = []
+
+# Enables debugging of generated code by the C backend by inserting printf() statements
+# at the beginning of each function call.
+debug_codegen = []
