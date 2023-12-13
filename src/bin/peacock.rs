@@ -152,9 +152,15 @@ fn load_grammar(grammar_file: &str, grammar_format: GrammarFormat, out_dir: &str
 /* Input type */
 static mut SERIALIZATION_BUFFER: [u8; 128 * 1024 * 1024] = [0; 128 * 1024 * 1024];
 
-#[derive(Serialize, Deserialize, Clone, Debug, Hash)]
+#[derive(Serialize, Deserialize, Debug, Hash)]
 pub struct PeacockInput {
     sequence: Vec<usize>,
+}
+
+impl PeacockInput {
+    pub fn sequence(&self) -> &[usize] {
+        &self.sequence
+    }
 }
 
 impl Input for PeacockInput {
@@ -195,6 +201,14 @@ impl Default for PeacockInput {
     }
 }
 
+impl Clone for PeacockInput {
+    fn clone(&self) -> Self {
+        let mut clone = Self::default();
+        clone.sequence.extend_from_slice(&self.sequence);
+        clone
+    }
+}
+
 /* Mutator */
 struct PeacockMutator;
 
@@ -210,7 +224,7 @@ where
 {
     fn mutate(&mut self, state: &mut S, input: &mut PeacockInput, _stage_idx: i32) -> Result<MutationResult, Error> {
         let capacity = input.sequence.capacity();
-        let len = state.rand_mut().below(input.sequence.len() as u64 + 1) as usize;
+        let len = state.rand_mut().below(input.sequence.len() as u64) as usize;
         let buf = input.sequence.as_mut_ptr();
         
         unsafe {
@@ -263,7 +277,7 @@ fn fuzz(args: Args) -> Result<(), Error> {
             std::env::set_var("LD_PRELOAD", value);
             std::env::remove_var(PRELOAD_ENV);
         }
-            
+        
         let mut shmem_provider = UnixShMemProvider::new()?;
         let mut shmem = shmem_provider.new_shmem(MAP_SIZE)?;
         shmem.write_to_env("__AFL_SHM_ID")?;
