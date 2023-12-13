@@ -2,8 +2,8 @@
 
 ## Execution speed
 - Baseline: 12k exec/s
-- Peacock: 9.2k exec/s (24% overhead)
-- Original Gramatron: 8.6k exec/s (29% overhead)
+- Peacock: ~8.6k exec/s (29% overhead)
+- Original Gramatron: ~8.5k exec/s (30% overhead)
 - LibAFL Gramatron: N/A because GramatronInput does not implement HasTargetBytes, so it cannot be used with ForkServerExecutor
 
 ## Raw throughput
