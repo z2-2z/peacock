@@ -130,6 +130,8 @@ fn load_grammar(grammar_file: &str, grammar_format: GrammarFormat, out_dir: &str
     
     mkdir(out_dir);
     if !generator_so.exists() || newer(grammar_file, &generator_so) {
+        println!("Compiling generator.so ...");
+        
         /* Generate code from grammar */
         let mut cfg = ContextFreeGrammar::builder();
         
