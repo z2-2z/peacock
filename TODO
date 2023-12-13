@@ -10,3 +10,4 @@
 - comment function in CGenerator: headline, annotation
 - run static code analyzers over generated C code
 - extra corpus arg for fuzzer
+- manually specify entrypoint non-term on command line
