@@ -315,7 +315,7 @@ fn fuzz(args: Args) -> Result<(), Error> {
             StdState::new(
                 StdRand::with_seed(seed),
                 CachedOnDiskCorpus::<PeacockInput>::new(&queue_dir, 128)?,
-                OnDiskCorpus::new(&crashes_dir)?,
+                OnDiskCorpus::new(crashes_dir)?,
                 &mut feedback,
                 &mut objective,
             )?
@@ -349,7 +349,7 @@ fn fuzz(args: Args) -> Result<(), Error> {
             &mut mgr,
             &[
                 queue_dir,
-                crashes_dir,
+                //crashes_dir,
             ]
         )?;
         
