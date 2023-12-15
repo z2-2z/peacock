@@ -546,6 +546,11 @@ fn emit_unparsing_function(nonterm: usize, rules: &[Vec<LLSymbol>], grammar: &Lo
     fmt.write("}");
     fmt.blankline();
     
+    fmt.write("size_t target_cursor = 0;");
+    fmt.write("size_t target_id = (size_t) -1LL;");
+    fmt.write("size_t target_seq_len = seq_idx;");
+    fmt.blankline();
+    
     for (i, rule) in rules.iter().enumerate().sorted_by(|(_, a), (_, b)| b.len().cmp(&a.len())) {
         fmt.write(format!("// Rule #{}", i));
         fmt.write("do {");
@@ -576,16 +581,33 @@ fn emit_unparsing_function(nonterm: usize, rules: &[Vec<LLSymbol>], grammar: &Lo
             }
         }
         
-        fmt.write("*cursor = tmp_cursor;");
-        fmt.write(format!("seq->buf[seq_idx] = {};", i));
-        fmt.write("return 1;");
+        fmt.write("if (tmp_cursor > target_cursor) {");
+        fmt.indent();
+        fmt.write(format!("target_id = {};", i));
+        fmt.write("target_cursor = tmp_cursor;");
+        fmt.write("target_seq_len = seq->len;");
+        fmt.unindent();
+        fmt.write("}");
+        
         fmt.unindent();
         fmt.write("} while (0);");
         fmt.blankline();
     }
     
-    fmt.write("seq->len = seq_idx;");
+    fmt.write("seq->len = target_seq_len;");
+    fmt.blankline();
+    
+    fmt.write(format!("if (target_id < {}) {{", rules.len()));
+    fmt.indent();
+    fmt.write("*cursor = target_cursor;");
+    fmt.write("seq->buf[seq_idx] = target_id;");
+    fmt.write("return 1;");
+    fmt.unindent();
+    fmt.write("} else {");
+    fmt.indent();
     fmt.write("return 0;");
+    fmt.unindent();
+    fmt.write("}");
     
     fmt.unindent();
     fmt.write("}");

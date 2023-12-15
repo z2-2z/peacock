@@ -141,9 +141,13 @@ static int unparse_sequence_nontermXYZ (Sequence* seq, unsigned char* input, siz
         return 0;
     }
     
+    size_t target_cursor = 0;
+    size_t target_id = (size_t) -1LL;
+    size_t target_seq_len = seq_idx;
+    
     // Single rule
-    seq->len = seq_idx + 1;
     do {
+        seq->len = seq_idx + 1;
         size_t tmp_cursor = *cursor;
         
         // try item 1: terminal
@@ -157,12 +161,21 @@ static int unparse_sequence_nontermXYZ (Sequence* seq, unsigned char* input, siz
             break;
         }
         
-        *cursor = tmp_cursor;
-        seq->buf[seq_idx] = 0; // index of rule
-        return 1;
+        if (tmp_cursor > target_cursor) {
+            target_id = 0; // index of rule
+            target_cursor = tmp_cursor;
+            target_seq_len = seq->len;
+        }
     } while(0);
     
-    seq->len = seq_idx;
+    seq->len = target_seq_len;
+    
+    if (LIKELY(target_id < NUM_RULES)) {
+        *cursor = target_cursor;
+        seq->buf[seq_idx] = target_id;
+        return 1;
+    }
+    
     return 0;
 }
 
