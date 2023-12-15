@@ -1,6 +1,5 @@
-<img align="center" src="logo.png">
-
 <div align="center">
+    <img align="center" src="logo.png">
     <b>~~~ fuzzing with grammar-based mutations ~~~</b>
 </div>
 
