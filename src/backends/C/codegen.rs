@@ -503,7 +503,7 @@ fn emit_serialization_code(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>
     emit_serialization_entrypoint(grammar, fmt);
 }
 
-fn emit_header(mut outfile: File) {
+fn emit_header(mut outfile: File, mutations: bool, serializations: bool, unparsing: bool) -> Result<(), std::io::Error> {
     write!(
         &mut outfile,
         "
@@ -511,15 +511,31 @@ fn emit_header(mut outfile: File) {
 #define __PEACOCK_GENERATOR_H
 
 #include <stddef.h>
+")?;
+    
+    if mutations {
+        writeln!(&mut outfile, "size_t mutate_sequence (size_t* buf, size_t len, size_t capacity);")?;
+    }
 
-size_t mutate_sequence (size_t* buf, size_t len, size_t capacity);
-size_t serialize_sequence (size_t* seq, size_t seq_len, unsigned char* out, size_t out_len);
+    if serializations {
+        writeln!(&mut outfile, "size_t serialize_sequence (size_t* seq, size_t seq_len, unsigned char* out, size_t out_len);")?;
+    }
+
+    if unparsing {
+        writeln!(&mut outfile, "size_t unparse_sequence (size_t* seq_buf, size_t seq_capacity, unsigned char* input, size_t input_len);")?;
+    }
+    
+    write!(
+        &mut outfile,
+        "
 void seed_generator (size_t new_seed);
-size_t unparse_sequence (size_t* seq_buf, size_t seq_capacity, unsigned char* input, size_t input_len);
+
 
 #endif /* __PEACOCK_GENERATOR_H */
 "
-    ).expect("Could not write to header file");
+    )?;
+    
+    Ok(())
 }
 
 fn emit_unparsing_declarations(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
@@ -660,6 +676,9 @@ fn emit_unparsing_code(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
 pub struct CGenerator {
     outfile: PathBuf,
     header: bool,
+    mutations: bool,
+    serializations: bool,
+    unparsing: bool,
 }
 
 impl CGenerator {
@@ -667,11 +686,29 @@ impl CGenerator {
         Self {
             outfile: outfile.as_ref().to_path_buf(),
             header: true,
+            mutations: true,
+            serializations: true,
+            unparsing: true,
         }
     }
     
     pub fn generate_header(mut self, flag: bool) -> Self {
         self.header = flag;
+        self
+    }
+    
+    pub fn emit_mutation_procedure(mut self, flag: bool) -> Self {
+        self.mutations = flag;
+        self
+    }
+    
+    pub fn emit_serialization_procedure(mut self, flag: bool) -> Self {
+        self.serializations = flag;
+        self
+    }
+    
+    pub fn emit_unparsing_procedure(mut self, flag: bool) -> Self {
+        self.unparsing = flag;
         self
     }
     
@@ -684,14 +721,23 @@ impl CGenerator {
         emit_macros(&mut formatter);
         emit_types(&mut formatter);
         emit_rand(&mut formatter);
-        emit_mutation_code(&grammar, &mut formatter);
-        emit_serialization_code(&grammar, &mut formatter);
-        emit_unparsing_code(&grammar, &mut formatter);
+        
+        if self.mutations {
+            emit_mutation_code(&grammar, &mut formatter);
+        }
+        
+        if self.serializations {
+            emit_serialization_code(&grammar, &mut formatter);
+        }
+        
+        if self.unparsing {
+            emit_unparsing_code(&grammar, &mut formatter);
+        }
         
         if self.header {
             self.outfile.set_extension("h");
             let outfile = File::create(&self.outfile).expect("Could not create header file");
-            emit_header(outfile);
+            emit_header(outfile, self.mutations, self.serializations, self.unparsing).expect("Could not write to header file");
         }
     }
 }
