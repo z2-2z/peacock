@@ -7,11 +7,12 @@ use crate::{
     error::{ParsingError, GrammarError},
 };
 
-const ENTRYPOINT: &str = "ENTRYPOINT";
+const DEFAULT_ENTRYPOINT: &str = "ENTRYPOINT";
 
 pub struct GrammarBuilder {
     rules: Vec<ProductionRule>,
     optimize: bool,
+    entrypoint: String,
 }
 
 impl GrammarBuilder {
@@ -19,12 +20,13 @@ impl GrammarBuilder {
         Self {
             rules: Vec::new(),
             optimize: true,
+            entrypoint: DEFAULT_ENTRYPOINT.to_string(),
         }
     }
     
     fn check_entrypoint(&self) -> bool {
         for rule in &self.rules {
-            if rule.lhs().id() == ENTRYPOINT {
+            if rule.lhs().id() == self.entrypoint {
                 return false;
             }
         }
@@ -74,6 +76,11 @@ impl GrammarBuilder {
         self
     }
     
+    pub fn entrypoint<S: Into<String>>(mut self, entrypoint: S) -> Self {
+        self.entrypoint = entrypoint.into();
+        self
+    }
+    
     pub fn build(self) -> Result<ContextFreeGrammar, GrammarError> {
         if self.check_entrypoint() {
             return Err(GrammarError::MissingEntrypoint);
@@ -85,7 +92,7 @@ impl GrammarBuilder {
         
         let mut cfg = ContextFreeGrammar::new(
             self.rules,
-            NonTerminal::new(ENTRYPOINT),
+            NonTerminal::new(self.entrypoint),
         );
         
         if self.optimize {
