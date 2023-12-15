@@ -15,6 +15,7 @@ json_comments = "0.2"
 thiserror = "1.0"
 ahash = { version = "0.8", default-features = false, features = ["std", "compile-time-rng"] }
 petgraph = "0.6"
+itertools = "0.12"
 
 # Needed for binaries
 clap = { version = "4.4", features = ["derive"] }

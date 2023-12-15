@@ -138,12 +138,11 @@ static int unparse_sequence_nontermXYZ (Sequence* seq, unsigned char* input, siz
     size_t seq_idx = seq->len;
     
     if (UNLIKELY(seq_idx >= seq->capacity)) {
-        return 1;
+        return 0;
     }
     
-    seq->len += 1;
-    
     // Single rule
+    seq->len = seq_idx + 1;
     do {
         size_t tmp_cursor = *cursor;
         
@@ -163,7 +162,7 @@ static int unparse_sequence_nontermXYZ (Sequence* seq, unsigned char* input, siz
         return 1;
     } while(0);
     
-    seq->len -= 1;
+    seq->len = seq_idx;
     return 0;
 }
 

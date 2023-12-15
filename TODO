@@ -1,4 +1,3 @@
-- compatibility with grammars of other fuzzers (nautilus)
 - feature flags for backends and frontends
 - components
 - lastly: write docs

@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::io::Write;
+use itertools::Itertools;
 
 use crate::{
     backends::C::{
@@ -540,17 +541,16 @@ fn emit_unparsing_function(nonterm: usize, rules: &[Vec<LLSymbol>], grammar: &Lo
     fmt.blankline();
     fmt.write("if (UNLIKELY(seq_idx >= seq->capacity)) {");
     fmt.indent();
-    fmt.write("return 1;");
+    fmt.write("return 0;");
     fmt.unindent();
     fmt.write("}");
     fmt.blankline();
-    fmt.write("seq->len += 1;");
-    fmt.blankline();
     
-    for (i, rule) in rules.iter().enumerate() {
+    for (i, rule) in rules.iter().enumerate().sorted_by(|(_, a), (_, b)| b.len().cmp(&a.len())) {
         fmt.write(format!("// Rule #{}", i));
         fmt.write("do {");
         fmt.indent();
+        fmt.write("seq->len = seq_idx + 1;");
         fmt.write("size_t tmp_cursor = *cursor;");
         fmt.blankline();
         
@@ -584,7 +584,7 @@ fn emit_unparsing_function(nonterm: usize, rules: &[Vec<LLSymbol>], grammar: &Lo
         fmt.blankline();
     }
     
-    fmt.write("seq->len -= 1;");
+    fmt.write("seq->len = seq_idx;");
     fmt.write("return 0;");
     
     fmt.unindent();
