@@ -38,6 +38,10 @@ path = "src/bin/peacock.rs"
 name = "peacock-gen"
 path = "src/bin/generate.rs"
 
+[[bin]]
+name = "peacock-merge"
+path = "src/bin/merge.rs"
+
 [features]
 default = []
 

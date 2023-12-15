@@ -83,7 +83,7 @@ impl GrammarBuilder {
     
     pub fn build(self) -> Result<ContextFreeGrammar, GrammarError> {
         if self.check_entrypoint() {
-            return Err(GrammarError::MissingEntrypoint);
+            return Err(GrammarError::MissingEntrypoint(self.entrypoint));
         }
         
         if let Some(nonterm) = self.check_non_terminals() {
