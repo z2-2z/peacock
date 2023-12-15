@@ -2,6 +2,8 @@ use clap::Parser;
 use std::path::{PathBuf, Path};
 use std::process::Command;
 use std::ops::Deref;
+use std::fs::File;
+use std::io::Read;
 use serde::{Serialize, Deserialize};
 use ahash::RandomState;
 use std::time::Duration;
@@ -90,6 +92,7 @@ struct Args {
 type GrammarMutationFunc = extern "C" fn(buf: *mut usize, len: usize, capacity: usize) -> usize;
 type GrammarSerializationFunc = extern "C" fn(seq: *const usize, seq_len: usize, out: *mut u8, out_len: usize) -> usize;
 type GrammarSeedFunc = extern "C" fn(seed: usize);
+type GrammarUnparseFunc = extern "C" fn(seq: *mut usize, seq_capacity: usize, input: *const u8, input_len: usize) -> usize;
 
 #[allow(non_upper_case_globals)]
 static mut grammar_mutate: Option<GrammarMutationFunc> = None;
@@ -97,6 +100,8 @@ static mut grammar_mutate: Option<GrammarMutationFunc> = None;
 static mut grammar_serialize: Option<GrammarSerializationFunc> = None;
 #[allow(non_upper_case_globals)]
 static mut grammar_seed: Option<GrammarSeedFunc> = None;
+#[allow(non_upper_case_globals)]
+static mut grammar_unparse: Option<GrammarUnparseFunc> = None;
 
 fn compile_so(output: &Path, input: &Path) {
     let output = Command::new("cc")
@@ -123,6 +128,7 @@ pub fn load_generator<P: AsRef<Path>>(generator_so: P) {
         grammar_mutate = Some(get_function::<GrammarMutationFunc>(&lib, b"mutate_sequence"));
         grammar_serialize = Some(get_function::<GrammarSerializationFunc>(&lib, b"serialize_sequence"));
         grammar_seed = Some(get_function::<GrammarSeedFunc>(&lib, b"seed_generator"));
+        grammar_unparse = Some(get_function::<GrammarUnparseFunc>(&lib, b"unparse_sequence"));
         std::mem::forget(lib);
     }
 }
@@ -176,6 +182,40 @@ impl Input for PeacockInput {
     fn generate_name(&self, _idx: usize) -> String {
         let hash = RandomState::with_seeds(0, 0, 0, 0).hash_one(self);
         format!("peacock-raw-{:016x}", hash)
+    }
+    
+    fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
+        let path = path.as_ref();
+        let mut file = File::open(path)?;
+        let mut bytes: Vec<u8> = vec![];
+        file.read_to_end(&mut bytes)?;
+        
+        let is_raw = if let Some(file_name) = path.file_name().and_then(|x| x.to_str()) {
+            file_name.starts_with("peacock-raw-")
+        } else {
+            false
+        };
+        
+        if is_raw {
+            Ok(postcard::from_bytes(&bytes)?)
+        } else {
+            let mut ret = Self::default();
+            unsafe {
+                let len = grammar_unparse.unwrap_unchecked()(
+                    ret.sequence.as_mut_ptr(),
+                    ret.sequence.capacity(),
+                    bytes.as_ptr(),
+                    bytes.len()
+                );
+                
+                if len == 0 {
+                    return Err(Error::serialize(format!("Could not unparse sequence from input file {}", path.display())));
+                }
+                
+                ret.sequence.set_len(len);
+            }
+            Ok(ret)
+        }
     }
 }
 
