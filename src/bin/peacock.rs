@@ -84,6 +84,9 @@ struct Args {
     #[arg(short, long)]
     entrypoint: Option<String>,
     
+    #[arg(short, long)]
+    corpus: Option<String>,
+    
     #[arg(trailing_var_arg = true, allow_hyphen_values = true, required = true)]
     cmdline: Vec<String>,
 }
@@ -389,6 +392,17 @@ fn fuzz(args: Args) -> Result<(), Error> {
             .build_dynamic_map(edges_observer, tuple_list!(time_observer))?;
         
         let mut executor = TimeoutForkserverExecutor::with_signal(forkserver, timeout, signal)?;
+        
+        if let Some(corpus) = &args.corpus {
+            state.load_initial_inputs(
+                &mut fuzzer,
+                &mut executor,
+                &mut mgr,
+                &[
+                    PathBuf::from(corpus),
+                ],
+            )?;
+        }
         
         state.load_initial_inputs(
             &mut fuzzer,

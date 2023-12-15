@@ -5,4 +5,3 @@
 - test libfuzzer integration
 - comment function in CGenerator: headline, annotation
 - run static code analyzers over generated C code
-- extra corpus arg for fuzzer
