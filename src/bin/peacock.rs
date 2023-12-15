@@ -50,7 +50,7 @@ fn newer<P1: AsRef<Path>, P2: AsRef<Path>>(a: P1, b: P2) -> bool {
 
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
-enum GrammarFormat {
+pub enum GrammarFormat {
     Peacock,
     Gramatron,
 }
@@ -78,6 +78,9 @@ struct Args {
     
     #[arg(long, default_value_t = GrammarFormat::Peacock)]
     format: GrammarFormat,
+    
+    #[arg(short, long)]
+    entrypoint: Option<String>,
     
     #[arg(trailing_var_arg = true, allow_hyphen_values = true, required = true)]
     cmdline: Vec<String>,
@@ -124,7 +127,7 @@ pub fn load_generator<P: AsRef<Path>>(generator_so: P) {
     }
 }
 
-fn load_grammar(grammar_file: &str, grammar_format: GrammarFormat, out_dir: &str) {
+fn load_grammar(grammar_file: &str, grammar_format: GrammarFormat, out_dir: &str, entrypoint: Option<&String>) {
     let generator_so = PathBuf::from(format!("{}/generator.so", out_dir));
     let c_file = PathBuf::from(format!("{}/generator.c", out_dir));
     
@@ -138,6 +141,10 @@ fn load_grammar(grammar_file: &str, grammar_format: GrammarFormat, out_dir: &str
         match grammar_format {
             GrammarFormat::Peacock => cfg = cfg.peacock_grammar(grammar_file).unwrap(),
             GrammarFormat::Gramatron => cfg = cfg.gramatron_grammar(grammar_file).unwrap(),
+        }
+        
+        if let Some(entrypoint) = entrypoint {
+            cfg = cfg.entrypoint(entrypoint);
         }
         
         let cfg = cfg.build().unwrap();
@@ -397,6 +404,6 @@ fn fuzz(args: Args) -> Result<(), Error> {
 
 pub fn main() {
     let args = Args::parse();
-    load_grammar(&args.grammar, args.format, &args.output);
+    load_grammar(&args.grammar, args.format, &args.output, args.entrypoint.as_ref());
     fuzz(args).expect("Could not launch fuzzer");
 }

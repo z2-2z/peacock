@@ -3,8 +3,6 @@
 - unparser
 	- load inputs from disk by checking filename. "peacock-raw" is serialized otherwise unparse
 - components
-- json backend
-- grammar merger tool
 - lastly: write docs
 - test libfuzzer integration
 - comment function in CGenerator: headline, annotation

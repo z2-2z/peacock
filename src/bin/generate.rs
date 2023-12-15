@@ -4,20 +4,8 @@ use peacock_fuzz::{
     backends::C::CGenerator,
 };
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
-enum GrammarFormat {
-    Peacock,
-    Gramatron,
-}
-
-impl std::fmt::Display for GrammarFormat {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            GrammarFormat::Peacock => write!(f, "peacock"),
-            GrammarFormat::Gramatron => write!(f, "gramatron"),
-        }
-    }
-}
+pub mod peacock;
+use peacock::GrammarFormat;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -30,6 +18,9 @@ struct Args {
     
     #[arg(long, default_value_t = GrammarFormat::Peacock)]
     format: GrammarFormat,
+    
+    #[arg(short, long)]
+    entrypoint: Option<String>,
 }
 
 fn main() {
@@ -40,6 +31,10 @@ fn main() {
     match args.format {
         GrammarFormat::Peacock => cfg = cfg.peacock_grammar(&args.grammar).unwrap(),
         GrammarFormat::Gramatron => cfg = cfg.gramatron_grammar(&args.grammar).unwrap(),
+    }
+    
+    if let Some(entrypoint) = args.entrypoint {
+        cfg = cfg.entrypoint(entrypoint);
     }
     
     let cfg = cfg.build().unwrap();
