@@ -6,7 +6,7 @@ mod generator;
 #[cfg(any(feature = "static-loading", feature = "dynamic-loading"))]
 pub use ffi::load_generator;
 
-pub use ffi::generator_seed;
+pub use ffi::generator_seed as seed_generator;
 
 pub use input::PeacockInput;
 pub use mutator::PeacockMutator;
