@@ -29,11 +29,11 @@ itertools = "0.12"
 clap = { version = "4.4", features = ["derive"] }
 libloading = "0.8"
 serde = "1.0"
-libafl = { version = "0.11", default-features = false, features = [
+libafl = { git = "https://github.com/AFLplusplus/LibAFL", branch = "main", default-features = false, features = [
     "std", "derive", "llmp_compression", "llmp_small_maps", "llmp_broker_timeouts", "rand_trait", "fork", "prelude", "gzip", "serdeany_autoreg", "tui_monitor",
 ] }
 postcard = "1.0"
-libafl_bolts = "0.11"
+libafl_bolts = { git = "https://github.com/AFLplusplus/LibAFL", branch = "main" }
 nix = "0.26"
 
 [[bin]]

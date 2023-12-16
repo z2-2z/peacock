@@ -196,7 +196,7 @@ fn emit_mutation_function_single(rule: &[LLSymbol], fmt: &mut CFormatter<File>) 
     fmt.write("return 1;");
 }
 
-fn emit_mutation_function_multiple(rules: &Vec<Vec<LLSymbol>>, fmt: &mut CFormatter<File>) {
+fn emit_mutation_function_multiple(rules: &[Vec<LLSymbol>], fmt: &mut CFormatter<File>) {
     let have_nonterminals = rules_have_nonterminals(rules);
     
     fmt.write("size_t idx = seq->len;");
@@ -259,7 +259,7 @@ fn emit_mutation_function_multiple(rules: &Vec<Vec<LLSymbol>>, fmt: &mut CFormat
     fmt.write("return 1;");
 }
 
-fn emit_mutation_function(nonterm: usize, rules: &Vec<Vec<LLSymbol>>, grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
+fn emit_mutation_function(nonterm: usize, rules: &[Vec<LLSymbol>], grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
     fmt.write(format!("// This is the sequence mutation function for non-terminal {:?}", grammar.nonterminals()[nonterm]));
     fmt.write(format!("static int mutate_seq_nonterm{} (Sequence* seq, size_t* step) {{", nonterm));
     fmt.indent();
@@ -451,7 +451,7 @@ fn emit_serialization_function_multiple(rules: &[Vec<LLSymbol>], fmt: &mut CForm
     fmt.write("return (size_t) (out - original_out);");
 }
 
-fn emit_serialization_function(nonterm: usize, rules: &Vec<Vec<LLSymbol>>, grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
+fn emit_serialization_function(nonterm: usize, rules: &[Vec<LLSymbol>], grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
     fmt.write(format!("// This is the serialization function for non-terminal {:?}", grammar.nonterminals()[nonterm]));
     fmt.write(format!("static size_t serialize_seq_nonterm{} (size_t* seq, size_t seq_len, unsigned char* out, size_t out_len, size_t* step) {{", nonterm));
     fmt.indent();
