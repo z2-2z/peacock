@@ -1,6 +1,9 @@
+//! This module contains various error types.
+
 use std::path::PathBuf;
 use thiserror::Error;
 
+/// A ParsingError means that the syntax or format of the provided grammar is invalid.
 #[derive(Debug, Error)]
 pub struct ParsingError {
     path: PathBuf,
@@ -22,6 +25,7 @@ impl std::fmt::Display for ParsingError {
     }
 }
 
+/// A GrammarError represents an error with the content of a grammar.
 #[derive(Debug, Error)]
 pub enum GrammarError {
     #[error("The grammar does not contain an explicit entrypoint: {0}")]

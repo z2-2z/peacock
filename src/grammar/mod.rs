@@ -1,3 +1,5 @@
+//! This is the frontend that loads grammars.
+
 mod builder;
 mod cfg;
 

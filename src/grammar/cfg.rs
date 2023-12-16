@@ -4,6 +4,7 @@ use petgraph::{Graph, visit::Bfs};
 
 use crate::grammar::builder::GrammarBuilder;
 
+/// This type represents a non-terminal in a context-free grammar.
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct NonTerminal(String);
 
@@ -12,11 +13,13 @@ impl NonTerminal {
         Self(s.into())
     }
     
+    /// The id of a non-terminal is its name from the grammar files.
     pub fn id(&self) -> &str {
         &self.0
     }
 }
 
+/// This type represents a terminal in a context-free grammar.
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct Terminal(String);
 
@@ -25,11 +28,14 @@ impl Terminal {
         Self(s.into())
     }
     
+    /// The data of the terminal.
     pub fn content(&self) -> &str {
         &self.0
     }
 }
 
+/// The right-hand-side of a production rule in a context-free grammar is a sequence
+/// of terminals and non-terminals, or a sequence of Symbols.
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub enum Symbol {
     Terminal(Terminal),
@@ -37,17 +43,34 @@ pub enum Symbol {
 }
 
 impl Symbol {
+    /// Return whether the Symbol is a terminal
     #[inline]
     pub fn is_terminal(&self) -> bool {
         matches!(self, Symbol::Terminal(_))
     }
     
+    /// Return whether the Symbol is a non-terminal
     #[inline]
     pub fn is_non_terminal(&self) -> bool {
         matches!(self, Symbol::NonTerminal(_))
     }
 }
 
+/// A ProductionRule states how to expand a non-terminal.  
+///   
+/// The left-hand-side (lhs) of a rule is the non-terminal to expand.
+/// The right-hand-side (rhs) of a rule is the sequence of Symbols that are replacing the lhs.
+/// 
+/// Please note that if a grammar has multiple ways to expand a non-terminal like so:
+/// ```json
+/// {
+///     "<A-OR-B>": [
+///         ["'a'"],
+///         ["'b'"],
+///     ]
+/// }
+/// ```
+/// then multiple `ProductionRules` will be generated, one for each variant.
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct ProductionRule {
     lhs: NonTerminal,
@@ -62,10 +85,12 @@ impl ProductionRule {
         }
     }
     
+    /// The left-hand-side of a production rule or the non-terminal that is to be expanded.
     pub fn lhs(&self) -> &NonTerminal {
         &self.lhs
     }
     
+    /// The right-hand-side of a production rule or the sequence of Symbols that are replacing the left-hand-side.
     pub fn rhs(&self) -> &[Symbol] {
         &self.rhs
     }
@@ -97,20 +122,26 @@ fn is_only_non_terminals(rhs: &[Symbol]) -> bool {
     true
 }
 
+/// A ContextFreeGrammar is a set of production rules that describe how to construct an input.
+/// 
+/// Use the [`builder()`](ContextFreeGrammar::builder) method to actually create this struct.
 pub struct ContextFreeGrammar {
     rules: Vec<ProductionRule>,
     entrypoint: NonTerminal,
 }
 
 impl ContextFreeGrammar {
+    /// Build a ContextFreeGrammar.
     pub fn builder() -> GrammarBuilder {
         GrammarBuilder::new()
     }
     
+    /// Access the production rules of this grammar.
     pub fn rules(&self) -> &[ProductionRule] {
         &self.rules
     }
     
+    /// Access the entrypoint non-terminal of this grammar.
     pub fn entrypoint(&self) -> &NonTerminal {
         &self.entrypoint
     }
