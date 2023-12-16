@@ -82,3 +82,37 @@ and corresponds to the regular expression `a(b*)`.
 Peacock also supports the Gramatron format, which is a bit different and does not allow for comments.
 
 ## C API Documentation
+
+- `void seed_generator (size_t new_seed)`   
+  Supply a seed for the RNG of the mutator.
+- `size_t unparse_sequence (size_t* seq_buf, size_t seq_capacity, unsigned char* input, size_t input_len)`   
+  Given an input that adheres to the grammar, find the corresponding automaton walk. _This function may be slow, use outside of hot loop._
+  - `seq_buf`: Automaton walk will be written into this buffer
+  - `seq_capacity`: Maximum number of elements that `seq_buf` can hold (not number of bytes)
+  - `input`: User input adhering to grammar
+  - `input_len`: Length of `input`
+  
+  Returns the number of elements written to `seq_buf` or 0 if input does not adhere to grammar.
+- `size_t mutate_sequence (size_t* buf, size_t len, size_t capacity)`   
+  Given an automaton walk, create a random mutant of the walk.
+  - `buf`: Pointer to array that holds automaton walk
+  - `len`: Number of items in `buf` (not number of bytes)
+  - `capacity`: Maximum number of items that `buf` can hold (not number of bytes)
+  
+  Returns the length of the new walk.
+- `size_t serialize_sequence (size_t* seq, size_t seq_len, unsigned char* out, size_t out_len)`    
+  Given an automaton walk, create the corresponding output.
+  - `seq`: Pointer to automaton walk
+  - `seq_len`: Number of items in `seq` (not number of bytes)
+  - `out`: Output will be written into that buffer
+  - `out_len`: Number of bytes in `out`
+  
+  Returns how many bytes have been written to `out`.
+  
+  
+Macros:
+- `MULTITHREADING`: Define this variable to make the mutator completely thread-safe
+- `MAKE_VISIBLE`: Set visibility of functions from above to default
+- `SEED`: Compile-time seed for the RNG
+- `DISABLE_rand`: Don't include the internal rand function and call an external one with the signature `size_t rand (void)`
+- `DISSABLE_seed`: Don't include the `seed_generator` function and call an external one with the same signature from above.
