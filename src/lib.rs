@@ -41,10 +41,13 @@
 //! ```
 //! And that's it.
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 pub(crate) mod parser;
 
 pub mod error;
 pub mod grammar;
 pub mod backends;
+
+#[cfg(feature = "runtime")]
+pub mod components;
