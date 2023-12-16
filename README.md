@@ -45,7 +45,7 @@ cargo doc --open
 in order to get started with peacock as a library.
 
 
-## How to write Grammars
+## How to write grammars
 
 Peacock accepts its context-free grammars in JSON format.
 A context-free grammar has production rules of the form:
@@ -64,7 +64,7 @@ B -> b B
 B -> Ɛ
 ```
 would be written as
-```json
+```jsonc
 {
     // Comments are also possible :)
     "<A>": [
