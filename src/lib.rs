@@ -49,5 +49,5 @@ pub mod error;
 pub mod grammar;
 pub mod backends;
 
-#[cfg(feature = "runtime")]
+#[cfg(feature = "components")]
 pub mod components;

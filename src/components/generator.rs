@@ -1,4 +1,3 @@
-
 use libafl::prelude::{
     Generator, Error,
 };
