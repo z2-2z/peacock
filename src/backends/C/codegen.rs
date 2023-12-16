@@ -673,6 +673,7 @@ fn emit_unparsing_code(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
     emit_unparsing_entrypoint(grammar, fmt);
 }
 
+/// This is the main struct of the [`C`](crate::backends::C) backend that does all the heavy lifting.
 pub struct CGenerator {
     outfile: PathBuf,
     header: bool,
@@ -682,6 +683,7 @@ pub struct CGenerator {
 }
 
 impl CGenerator {
+    /// Create a new CGenerator and specify the output file where the C code is written to.
     pub fn new<P: AsRef<Path>>(outfile: P) -> Self {
         Self {
             outfile: outfile.as_ref().to_path_buf(),
@@ -692,26 +694,39 @@ impl CGenerator {
         }
     }
     
+    /// Also generate a .h file with all the definitions of the public C API of the generated code.
+    /// 
+    /// Default: `true`
     pub fn generate_header(mut self, flag: bool) -> Self {
         self.header = flag;
         self
     }
     
+    /// Emit code that realizes the mutation of an automaton walk.
+    /// 
+    /// Default: `true`
     pub fn emit_mutation_procedure(mut self, flag: bool) -> Self {
         self.mutations = flag;
         self
     }
     
+    /// Emit code that realizes the serialization of automaton walks into human-readable output.
+    /// 
+    /// Default: `true`
     pub fn emit_serialization_procedure(mut self, flag: bool) -> Self {
         self.serializations = flag;
         self
     }
     
+    /// Emit code that realizes the unparsing of user inputs into automaton walks.
+    /// 
+    /// Default: `true`
     pub fn emit_unparsing_procedure(mut self, flag: bool) -> Self {
         self.unparsing = flag;
         self
     }
     
+    /// Generate the C code for the given grammar `grammar`.
     pub fn generate(mut self, grammar: ContextFreeGrammar) {
         let grammar = LowLevelGrammar::from_high_level_grammar(grammar);
         let outfile = File::create(&self.outfile).expect("Could not create source file");
