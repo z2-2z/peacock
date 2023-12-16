@@ -23,6 +23,28 @@ peacock generates C code that encodes the automaton in its control flow. This sa
 
 The generated C code exposes a certain API that can be used by any application, e.g. a libfuzzer harness, an AFL++ custom mutator or even Rust code.
 
-But peacock also ships a ready to use fuzzer that can fuzz any binary that has been compiled with AFL++'s compilers or implements a forkserver.
+But peacock also ships a ready to use fuzzer that can fuzz any binary that has been compiled with AFL++'s compilers or implements an AFL-style forkserver.
 
 ## How to use it
+Clone the repo and execute
+```
+cargo build --release
+```
+This creates 4 ready-to-use tools:
+
+1. `peacock-fuzz`: A coverage-guided fuzzer that can fuzz any binary compiled with AFL++'s compilers or anything that speaks AFL's forkserver protocol
+2. `peacock-dump`: peacock-fuzz saves crashes and queue items in a raw, binary format to disk. Use this tool to get a human readable output from any such file. All these binary files have the prefix `peacock-raw-`.
+3. `peacock-gen`: Takes a grammar and produces C code
+4. `peacock-merge`: Merge multiple grammar files into one or convert a grammar file from one format into another.
+
+If you want more fine-grained control you can use the crate `peacock_fuzz` that is the backbone of all of the tools above.
+Execute
+```
+cargo doc --open
+```
+in order to get started with peacock as a library.
+
+
+## How to write Grammars
+
+## C API Documentation
