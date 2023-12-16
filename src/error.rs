@@ -28,9 +28,11 @@ impl std::fmt::Display for ParsingError {
 /// A GrammarError represents an error with the content of a grammar.
 #[derive(Debug, Error)]
 pub enum GrammarError {
+    /// The grammar does not contain rules to expand the entrypoint
     #[error("The grammar does not contain an explicit entrypoint: {0}")]
     MissingEntrypoint(String),
     
+    /// The grammar is referencing a non-terminal that has no rules to expand.
     #[error("The non-terminal '{0}' is referenced but never defined")]
     MissingNonTerminal(String),
 }

@@ -41,6 +41,8 @@
 //! ```
 //! And that's it.
 
+#![deny(missing_docs)]
+
 pub(crate) mod parser;
 
 pub mod error;

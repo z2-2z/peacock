@@ -38,7 +38,10 @@ impl Terminal {
 /// of terminals and non-terminals, or a sequence of Symbols.
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub enum Symbol {
+    /// A terminal is a chunk of data that will be inserted into the output / parsed from the input.
     Terminal(Terminal),
+    
+    /// A non-terminal is a placeholder that will be replaced by other symbols.
     NonTerminal(NonTerminal),
 }
 

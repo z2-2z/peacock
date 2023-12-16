@@ -18,14 +18,17 @@ fn terminal_string(content: &str) -> String {
     content.to_string()
 }
 
+/// This is the main struct of the [`json`](crate::backends::json) backend that does all the heavy lifting.
 pub struct JsonGenerator {}
 
 impl JsonGenerator {
+    /// Create a new JsonGenerator.
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {}
     }
     
+    /// Write the production rules of the supplied `grammar` into the output file `path` in peacock format.
     pub fn generate<P: AsRef<Path>>(self, path: P, grammar: ContextFreeGrammar) {
         let mut json = json!({});
         let object = json.as_object_mut().unwrap();
