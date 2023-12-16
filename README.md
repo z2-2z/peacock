@@ -47,4 +47,38 @@ in order to get started with peacock as a library.
 
 ## How to write Grammars
 
+Peacock accepts its context-free grammars in JSON format.
+A context-free grammar has production rules of the form:
+```
+A -> X Y Z ...
+```
+where `A` _must_ be a non-terminal and `X`,`Y`,`Z` can be non-terminals or terminals. The right-hand-side must contain at least one symbol.
+
+Non-terminals are enclosed in `<>`, so the non-terminal `A` would be represented as `<A>`. Terminals are enclosed in `''`.
+
+The set of rules 
+```
+A -> a B
+A -> a
+B -> b B
+B -> Ɛ
+```
+would be written as
+```json
+{
+    // Comments are also possible :)
+    "<A>": [
+        ["'a'", "<B>"],
+        ["'a'"]
+    ],
+    "<B>": [
+        ["'b'", "<B>"],
+        ["''"] // Ɛ = ''
+    ]
+}
+```
+and corresponds to the regular expression `a(b*)`.
+
+Peacock also supports the Gramatron format, which is a bit different and does not allow for comments.
+
 ## C API Documentation
