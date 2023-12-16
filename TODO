@@ -6,3 +6,4 @@
 - run static code analyzers over generated C code
 - const correctness in C code / API
 - crate documentation
+- publish on crates.io
