@@ -41,7 +41,7 @@ path = "src/bin/dump.rs"
 
 [[bin]]
 name = "peacock-fuzz"
-path = "src/bin/peacock.rs"
+path = "src/bin/fuzz.rs"
 
 [[bin]]
 name = "peacock-gen"

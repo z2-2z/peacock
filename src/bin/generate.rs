@@ -4,8 +4,8 @@ use peacock_fuzz::{
     backends::C::CGenerator,
 };
 
-pub mod peacock;
-use peacock::GrammarFormat;
+pub mod fuzz;
+use fuzz::GrammarFormat;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
