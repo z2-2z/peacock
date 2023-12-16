@@ -117,3 +117,6 @@ Macros:
 - `SEED`: Compile-time seed for the RNG
 - `DISABLE_rand`: Don't include the internal rand function and call an external one with the signature `size_t rand (void)`
 - `DISSABLE_seed`: Don't include the `seed_generator` function and call an external one with the same signature from above.
+
+## Warning
+This project is currently in a beta stage. Not all features are implemented yet and bugs will occur.
