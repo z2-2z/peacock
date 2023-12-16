@@ -1,5 +1,6 @@
 [package]
 name = "peacock-fuzz"
+description = "Library to parse context-free grammars and create grammar-based fuzzing tools"
 version = "0.1.0"
 edition = "2021"
 license-file = "COPYING"
