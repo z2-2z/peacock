@@ -1,0 +1,21 @@
+[package]
+name = "static_loading"
+version = "0.1.0"
+edition = "2021"
+
+[profile.release]
+lto = true
+codegen-units = 1
+
+
+[dependencies]
+peacock-fuzz = { path = "../..", features = ["static-loading"] }
+libafl = { git = "https://github.com/AFLplusplus/LibAFL", default-features = false, features = [
+    "std", "derive", "llmp_compression", "llmp_small_maps", "llmp_broker_timeouts", "rand_trait", "fork", "prelude", "gzip", "serdeany_autoreg", "tui_monitor",
+] }
+libafl_bolts = { git = "https://github.com/AFLplusplus/LibAFL" }
+nix = "0.26"
+
+[build-dependencies]
+peacock-fuzz = { path = "../.." }
+cc = "1.0"

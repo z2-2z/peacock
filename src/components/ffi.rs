@@ -19,6 +19,7 @@ static mut grammar_seed: Option<GrammarSeedFunc> = None;
 static mut grammar_unparse: Option<GrammarUnparseFunc> = None;
 
 #[cfg(feature = "static-loading")]
+#[link(name = "generator")]
 extern "C" {
     fn mutate_sequence(buf: *mut usize, len: usize, capacity: usize) -> usize;
     fn serialize_sequence(seq: *const usize, seq_len: usize, out: *mut u8, out_len: usize) -> usize;
