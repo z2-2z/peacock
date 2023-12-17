@@ -39,5 +39,5 @@ fn main() {
     
     let cfg = cfg.build().unwrap();
     
-    CGenerator::new(&args.output).generate(cfg);
+    CGenerator::new().generate(&args.output, cfg);
 }

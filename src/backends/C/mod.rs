@@ -8,7 +8,7 @@
 //!     .build().unwrap();
 //! 
 //! // Then, generate grammar-based mutator code and write it into mutator.c
-//! CGenerator::new("mutator.c").generate(grammar);
+//! CGenerator::new().generate("mutator.c", grammar);
 //! ```
 
 mod formatter;

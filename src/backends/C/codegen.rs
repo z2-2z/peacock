@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::io::Write;
 use itertools::Itertools;
 
@@ -675,7 +675,6 @@ fn emit_unparsing_code(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
 
 /// This is the main struct of the [`C`](crate::backends::C) backend that does all the heavy lifting.
 pub struct CGenerator {
-    outfile: PathBuf,
     header: bool,
     mutations: bool,
     serializations: bool,
@@ -683,10 +682,10 @@ pub struct CGenerator {
 }
 
 impl CGenerator {
-    /// Create a new CGenerator and specify the output file where the C code is written to.
-    pub fn new<P: AsRef<Path>>(outfile: P) -> Self {
+    /// Create a new CGenerator.
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
         Self {
-            outfile: outfile.as_ref().to_path_buf(),
             header: true,
             mutations: true,
             serializations: true,
@@ -726,10 +725,10 @@ impl CGenerator {
         self
     }
     
-    /// Generate the C code for the given grammar `grammar`.
-    pub fn generate(mut self, grammar: ContextFreeGrammar) {
+    /// Generate the C code for the given grammar `grammar` and write it to `output`.
+    pub fn generate<P: AsRef<Path>>(self, output: P, grammar: ContextFreeGrammar) {
         let grammar = LowLevelGrammar::from_high_level_grammar(grammar);
-        let outfile = File::create(&self.outfile).expect("Could not create source file");
+        let outfile = File::create(output.as_ref()).expect("Could not create source file");
         let mut formatter = CFormatter::new(outfile);
         
         emit_includes(&mut formatter);
@@ -750,8 +749,9 @@ impl CGenerator {
         }
         
         if self.header {
-            self.outfile.set_extension("h");
-            let outfile = File::create(&self.outfile).expect("Could not create header file");
+            let mut outfile = output.as_ref().to_path_buf();
+            outfile.set_extension("h");
+            let outfile = File::create(outfile).expect("Could not create header file");
             emit_header(outfile, self.mutations, self.serializations, self.unparsing).expect("Could not write to header file");
         }
     }

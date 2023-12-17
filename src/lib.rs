@@ -23,7 +23,7 @@
 //! ```
 //! Then, you can plug the grammar into one of the provided backends:
 //! ```
-//! backends::C::CGenerator::new("output-file.c").generate(grammar);
+//! backends::C::CGenerator::new().generate("output-file.c", grammar);
 //! // or
 //! backends::json::JsonGenerator::new().generate("output-file.json", grammar);
 //! ```
