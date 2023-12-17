@@ -1,3 +1,2 @@
 - comment function in CGenerator: headline, annotation
 - run static code analyzers over generated C code
-- const correctness in C code / API

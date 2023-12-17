@@ -18,17 +18,18 @@ use crate::components::ffi::{
 const BINARY_PREFIX: &str = "peacock-raw-";
 static mut SERIALIZATION_BUFFER: [u8; 128 * 1024 * 1024] = [0; 128 * 1024 * 1024];
 
+/// This component represents an Input during fuzzing.
 #[derive(Serialize, Deserialize, Debug, Hash)]
 pub struct PeacockInput {
     sequence: Vec<usize>,
 }
 
 impl PeacockInput {
-    pub fn sequence(&self) -> &[usize] {
+    pub(crate) fn sequence(&self) -> &[usize] {
         &self.sequence
     }
     
-    pub fn sequence_mut(&mut self) -> &mut Vec<usize> {
+    pub(crate) fn sequence_mut(&mut self) -> &mut Vec<usize> {
         &mut self.sequence
     }
 }

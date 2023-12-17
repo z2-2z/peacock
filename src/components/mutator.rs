@@ -10,7 +10,16 @@ use crate::components::{
     ffi::generator_mutate,
 };
 
+/// This component implements grammar-based mutations.
 pub struct PeacockMutator;
+
+impl PeacockMutator {
+    /// Create a new mutator.
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        Self {}
+    }
+}
 
 impl Named for PeacockMutator {
     fn name(&self) -> &str {

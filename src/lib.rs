@@ -21,27 +21,14 @@
 //!     .entrypoint("MY-ENTRYPOINT")
 //!     .build().unwrap();
 //! ```
-//! Then, you can plug the grammar into one of the provided backends or you can write your own.   
-//! If you write your own backend you will most likely need to traverse the grammar:
+//! Then, you can plug the grammar into one of the provided backends:
 //! ```
-//! // Since a grammar is nothing but a set of rules, traverse the rules
-//! for rule in grammar.rules() {
-//!     // The left-hand-side (lhs) of a rule is a single non-terminal
-//!     println!("lhs = {:?}", rule.lhs());
-//! 
-//!     // The right-hand-side (rhs) of a rule is a sequence of terminals and non-terminals.
-//!     // This is captured in the enum "Symbol".
-//!     for symbol in rule.rhs() {
-//!         match symbol {
-//!             Symbol::Terminal(terminal) => println!("terminal: {}", terminal.content()),
-//!             Symbol::NonTerminal(nonterminal) => println!("non-terminal {}", nonterminal.id()),
-//!         }
-//!     }
-//! }
+//! backends::C::CGenerator::new("output-file.c").generate(grammar);
+//! // or
+//! backends::json::JsonGenerator::new().generate("output-file.json", grammar);
 //! ```
-//! And that's it.
 
-//#![deny(missing_docs)]
+#![deny(missing_docs)]
 
 pub(crate) mod parser;
 

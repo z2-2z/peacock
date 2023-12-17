@@ -27,6 +27,11 @@ extern "C" {
     fn unparse_sequence(seq: *mut usize, seq_capacity: usize, input: *const u8, input_len: usize) -> usize;
 }
 
+/// This function initializes the generator. Must be called before anything else.
+/// 
+/// This is the __static__ version of this function, meaning that it expects you to link the generator
+/// functions statically into the binary. The generator must be an archive file called `libgenerator.a`
+/// otherwise symbol resolution will fail.
 #[cfg(feature = "static-loading")]
 pub fn load_generator() {
     unsafe {
@@ -44,6 +49,10 @@ fn get_function<T: Copy>(lib: &libloading::Library, name: &[u8]) -> T {
     *f
 }
 
+/// This function initializes the generator. Must be called before anything else.
+/// 
+/// This is the __dynamic__ version of this function, which gets a path to a 
+/// shared object as an argument and loads that via dlopen().
 #[cfg(feature = "dynamic-loading")]
 pub fn load_generator<P: AsRef<Path>>(path: P) {
     let path = path.as_ref();
@@ -84,8 +93,9 @@ pub(crate) fn generator_serialize(sequence: &[usize], output: &mut [u8]) -> usiz
     }
 }
 
+/// Seed the RNG of the generator.
 pub fn generator_seed(seed: usize) {
-    let f = unsafe { grammar_seed }.expect("load_generator() has not been called before fuzzing");
+    let f = unsafe { grammar_seed }.expect("load_generator() has not been called before generator_seed()");
     
     unsafe {
         f(seed);

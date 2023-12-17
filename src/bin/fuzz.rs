@@ -195,7 +195,7 @@ fn fuzz(args: Args) -> Result<(), Error> {
             )?
         };
 
-        let mutator = PeacockMutator {};
+        let mutator = PeacockMutator::new();
         
         let mutational = StdMutationalStage::with_max_iterations(mutator, 0);
         
@@ -239,7 +239,7 @@ fn fuzz(args: Args) -> Result<(), Error> {
         )?;
         
         if state.corpus().count() == 0 {
-            let mut generator = PeacockGenerator {};
+            let mut generator = PeacockGenerator::new();
             state.generate_initial_inputs_forced(
                 &mut fuzzer,
                 &mut executor,
