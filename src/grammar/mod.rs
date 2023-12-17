@@ -33,5 +33,5 @@
 mod builder;
 mod cfg;
 
-pub use builder::GrammarBuilder;
+pub use builder::*;
 pub use cfg::*;

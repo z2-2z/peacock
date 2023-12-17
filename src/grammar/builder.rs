@@ -87,12 +87,16 @@ impl GrammarBuilder {
     }
     
     /// Apply Gramatron-style optimizations to this grammar that enable better mutation quality.
+    /// 
+    /// Default: `true`
     pub fn optimize(mut self, optimize: bool) -> Self {
         self.optimize = optimize;
         self
     }
     
     /// Set the entrypoint of all loaded grammars to be the given non-terminal `entrypoint`.
+    /// 
+    /// Default: [`DEFAULT_ENTRYPOINT`]
     pub fn entrypoint<S: Into<String>>(mut self, entrypoint: S) -> Self {
         self.entrypoint = entrypoint.into();
         self
