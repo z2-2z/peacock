@@ -1,4 +1,4 @@
-#[cfg(feature = "dynamic-loading")]
+#[cfg(not(feature = "static-loading"))]
 use {
     std::path::Path,
     std::ops::Deref,
@@ -42,7 +42,7 @@ pub fn load_generator() {
     }
 }
 
-#[cfg(feature = "dynamic-loading")]
+#[cfg(not(feature = "static-loading"))]
 fn get_function<T: Copy>(lib: &libloading::Library, name: &[u8]) -> T {
     let f: libloading::Symbol<T> = unsafe { lib.get(name) }.expect("Could not find function in generator.so");
     let f = f.deref();
@@ -53,7 +53,7 @@ fn get_function<T: Copy>(lib: &libloading::Library, name: &[u8]) -> T {
 /// 
 /// This is the __dynamic__ version of this function, which gets a path to a 
 /// shared object as an argument and loads that via dlopen().
-#[cfg(feature = "dynamic-loading")]
+#[cfg(not(feature = "static-loading"))]
 pub fn load_generator<P: AsRef<Path>>(path: P) {
     let path = path.as_ref();
     

@@ -52,7 +52,7 @@ name = "peacock-merge"
 path = "src/bin/merge.rs"
 
 [features]
-default = []
+default = ["components"]
 
 # Enables debugging of generated code by the C backend by inserting printf() statements
 # at the beginning of each function call.
@@ -62,9 +62,6 @@ docs-rs = ["libafl/document-features"]
 
 # For the LibAFL components: Activate this when a generator is statically compiled into the fuzzer
 static-loading = ["components"]
-
-# For the LibAFL components: Activate this when a generator is dynamically loaded into the fuzzer via dlopen()
-dynamic-loading = ["components"]
 
 # Include LibAFL components to build a fuzzer
 components = []
