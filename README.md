@@ -28,7 +28,7 @@ But peacock also ships a ready to use fuzzer that can fuzz any binary that has b
 ## How to use it
 Clone the repo and execute
 ```
-cargo build --release --features dynamic-loading
+cargo build --release
 ```
 This creates 4 ready-to-use tools:
 
