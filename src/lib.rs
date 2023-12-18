@@ -27,6 +27,14 @@
 //! // or
 //! backends::json::JsonGenerator::new().generate("output-file.json", grammar);
 //! ```
+//! And that's it.
+//! 
+//! ## Feature flags
+//! - `components`: Include LibAFL components in this library. On by default.
+//! - `static-loading`: Activate this if you want to compile the generated C code into the fuzzer. For more details see the
+//!   documentation of the `components`.
+//! - `debug_codegen`: This affects the C backend and inserts call to printf() at the beginning of every generated function to
+//!    help troubleshooting.
 
 #![deny(missing_docs)]
 
