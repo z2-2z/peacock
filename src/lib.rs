@@ -10,6 +10,11 @@
 //!   but you can easily write your own.
 //! - __runtime__: LibAFL components that you can use in your fuzzer to realize grammar-based mutations.
 //! 
+//! ## Grammars
+//! This library supports grammar files in two formats:
+//! 1. [Gramatron](https://github.com/HexHive/Gramatron) format for backwards compatibility
+//! 2. Its own "peacock format", which is documented in the [README](https://github.com/z2-2z/peacock#how-to-write-grammars) of this project 
+//! 
 //! ## Getting Started
 //! The first step always is to load grammars. To do this use the [`ContextFreeGrammar::builder()`](grammar::ContextFreeGrammar::builder) method
 //! that will give you access to a [`GrammarBuilder`](grammar::GrammarBuilder) like this:
@@ -32,7 +37,7 @@
 //! ```
 //! And that's it.
 //! 
-//! ## Feature flags
+//! ## Feature Flags
 //! - `components`: Include LibAFL components in this library. On by default.
 //! - `static-loading`: Activate this if you want to compile the generated C code into the fuzzer. For more details see the
 //!   documentation of the `components`.

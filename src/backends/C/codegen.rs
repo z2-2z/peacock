@@ -673,7 +673,9 @@ fn emit_unparsing_code(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
     emit_unparsing_entrypoint(grammar, fmt);
 }
 
-/// This is the main struct of the [`C`](crate::backends::C) backend that does all the heavy lifting.
+/// This is the main struct of the [`C`](crate::backends::C) backend that does all the heavy lifting and generates the code.
+/// 
+/// For documentation of the generated C code see the [README](https://github.com/z2-2z/peacock#c-api-documentation) of this project.
 pub struct CGenerator {
     header: bool,
     mutations: bool,

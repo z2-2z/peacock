@@ -18,7 +18,7 @@ fn terminal_string(content: &str) -> String {
     content.to_string()
 }
 
-/// This is the main struct of the [`json`](crate::backends::json) backend that does all the heavy lifting.
+/// This is the main struct of the [`json`](crate::backends::json) backend that does all the heavy lifting and generates the grammar.
 pub struct JsonGenerator {}
 
 impl JsonGenerator {

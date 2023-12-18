@@ -4,7 +4,7 @@ use petgraph::{Graph, visit::Bfs};
 
 use crate::grammar::builder::GrammarBuilder;
 
-/// This type represents a non-terminal in a context-free grammar.
+/// This type represents a [non-terminal](https://en.wikipedia.org/wiki/Terminal_and_nonterminal_symbols#Nonterminal_symbols) in a context-free grammar.
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct NonTerminal(String);
 
@@ -19,7 +19,7 @@ impl NonTerminal {
     }
 }
 
-/// This type represents a terminal in a context-free grammar.
+/// This type represents a [terminal](https://en.wikipedia.org/wiki/Terminal_and_nonterminal_symbols#Terminal_symbols) in a context-free grammar.
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct Terminal(String);
 
@@ -34,8 +34,8 @@ impl Terminal {
     }
 }
 
-/// The right-hand-side of a production rule in a context-free grammar is a sequence
-/// of terminals and non-terminals, or a sequence of Symbols.
+/// A Symbol is either a terminal or a non-terminal and can be found on the right-hand-side
+/// of a production rule.
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub enum Symbol {
     /// A terminal is a chunk of data that will be inserted into the output / parsed from the input.
