@@ -7,6 +7,9 @@
 //!   - `C`: Generate a grammar-based mutator in C
 //!   - `json`: Convert loaded grammar(s) into peacock format
 //! 
+//!   but you can easily write your own.
+//! - __runtime__: LibAFL components that you can use in your fuzzer to realize grammar-based mutations.
+//! 
 //! ## Getting Started
 //! The first step always is to load grammars. To do this use the [`ContextFreeGrammar::builder()`](grammar::ContextFreeGrammar::builder) method
 //! that will give you access to a [`GrammarBuilder`](grammar::GrammarBuilder) like this:
