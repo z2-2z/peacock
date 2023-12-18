@@ -63,9 +63,9 @@ docs-rs = ["libafl/document-features"]
 # For the LibAFL components: Activate this when a generator is statically compiled into the fuzzer
 static-loading = ["components"]
 
-# Include LibAFL components to build a fuzzer
+# Include LibAFL components in library
 components = []
 
 [package.metadata.docs.rs]
-all-features = true
+features = ["docs-rs"]
 rustc-args = ["--cfg", "docsrs"]
