@@ -1,4 +1,3 @@
-workspace = { members = ["test-data/static_loading"] }
 [package]
 name = "peacock-fuzz"
 description = "Library to parse context-free grammars and create grammar-based fuzzing tools"
