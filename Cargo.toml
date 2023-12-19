@@ -55,7 +55,7 @@ default = ["components"]
 
 # Enables debugging of generated code by the C backend by inserting printf() statements
 # at the beginning of each function call.
-debug_codegen = []
+debug-codegen = []
 
 docs-rs = ["libafl/document-features"]
 

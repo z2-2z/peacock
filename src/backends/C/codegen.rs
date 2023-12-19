@@ -52,7 +52,7 @@ fn rules_have_terminals(rules: &[Vec<LLSymbol>]) -> bool {
 }
 
 fn emit_includes(fmt: &mut CFormatter<File>) {
-    #[cfg(debug_codegen)]
+    #[cfg(feature = "debug-codegen")]
     fmt.write("#include <stdio.h>");
     
     fmt.write("#include <stddef.h>");
@@ -282,10 +282,8 @@ fn emit_mutation_entrypoint(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File
     fmt.write("size_t mutate_sequence (size_t* buf, size_t len, const size_t capacity) {");
     fmt.indent();
     
-    #[cfg(debug_codegen)]
-    {
-        fmt.write("printf(\"Calling mutate_sequence(%p, %lu, %lu)\\n\", buf, len, capacity);");
-    }
+    #[cfg(feature = "debug-codegen")]
+    fmt.write("printf(\"Calling mutate_sequence(%p, %lu, %lu)\\n\", buf, len, capacity);");
     
     fmt.write("if (UNLIKELY(!buf || !capacity)) {");
     fmt.indent();
@@ -456,10 +454,8 @@ fn emit_serialization_function(nonterm: usize, rules: &[Vec<LLSymbol>], grammar:
     fmt.write(format!("static size_t serialize_seq_nonterm{} (const size_t* const seq, const size_t seq_len, unsigned char* out, size_t out_len, size_t* const step) {{", nonterm));
     fmt.indent();
     
-    #[cfg(debug_codegen)]
-    {
-        fmt.write(format!("printf(\"Serializing %s (%lu/%lu)\\n\", {:?}, *step + 1, seq_len);", grammar.nonterminals()[nonterm]));
-    }
+    #[cfg(feature = "debug-codegen")]
+    fmt.write(format!("printf(\"Serializing %s (%lu/%lu)\\n\", {:?}, *step + 1, seq_len);", grammar.nonterminals()[nonterm]));
     
     if rules.is_empty() {
         unreachable!()
@@ -768,6 +764,6 @@ mod tests {
         let cfg = ContextFreeGrammar::builder()
             .gramatron_grammar("test-data/grammars/gramatron.json").unwrap()
             .build().unwrap();
-        CGenerator::new("/tmp/out.c").generate(cfg);
+        CGenerator::new().generate("/tmp/out.c", cfg);
     }
 }
