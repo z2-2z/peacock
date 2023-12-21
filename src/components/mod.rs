@@ -2,11 +2,11 @@
 //! 
 //! The components can interact with the code in two ways:
 //! - __dynamically__ (default): If the code is compiled into a shared object, it can be loaded via dlopen()
-//!   in `load_generator("path/to/library.so")`.
+//!   in `load_generator("path/to/generator.so")`.
 //! - __statically__: The code can also be directly compiled into the fuzzer via a build script.
 //!   If you plan to do this, activate the feature `static-loading` and call `load_generator()` without an argument.
 //!   One caveat of this is that the generated code must be compiled into a static archive that is called `libgenerator.a`.
-//!   This name is hardcoded into the components.
+//!   This name is hardcoded into this library.
 //! 
 //! Either way, it is mandatory that [`load_generator`] is called before fuzzing starts.
 //! 

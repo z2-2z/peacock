@@ -10,6 +10,8 @@
 //! // Then, generate grammar-based mutator code and write it into mutator.c
 //! CGenerator::new().generate("mutator.c", grammar);
 //! ```
+//! 
+//! The API is documented in the [README](https://github.com/z2-2z/peacock#c-api-documentation) of this project.
 
 mod formatter;
 mod grammar;

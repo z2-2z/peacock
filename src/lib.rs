@@ -41,7 +41,7 @@
 //! - `components`: Include LibAFL components in this library. On by default.
 //! - `static-loading`: Activate this if you want to compile the generated C code into the fuzzer. For more details see the
 //!   documentation of the `components`.
-//! - `debug-codegen`: This affects the C backend and inserts call to printf() at the beginning of every generated function to
+//! - `debug-codegen`: This affects the C backend and inserts calls to printf() at the beginning of every generated function to
 //!    help troubleshooting.
 
 #![deny(missing_docs)]
