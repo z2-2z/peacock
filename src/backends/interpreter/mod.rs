@@ -1,3 +1,17 @@
+//! Generate inputs by interpreting the rules of the grammar.
+//! 
+//! Use it like so:
+//! ```
+//! // First, load a grammar from disk
+//! let grammar = ContextFreeGrammar::builder()
+//!     .peacock_grammar("my-grammar.json").unwrap()
+//!     .build().unwrap();
+//! 
+//! // Then, generate one input and write it to a specified stream.
+//! let mut stream = std::io::stdout();
+//! GrammarInterpreter::new(cfg).interpret(&mut stream).unwrap();
+//! ```
+
 use std::io::Write;
 
 use crate::{
@@ -5,12 +19,14 @@ use crate::{
     grammar::ContextFreeGrammar,
 };
 
+/// The GrammarInterpreter interprets the rules of a grammar to generate inputs.
 pub struct GrammarInterpreter {
     grammar: LowLevelGrammar,
     seed: usize,
 }
 
 impl GrammarInterpreter {
+    /// Create a new GrammarInterpreter.
     #[allow(clippy::new_without_default)]
     pub fn new(grammar: ContextFreeGrammar) -> Self {
         Self {
@@ -19,6 +35,7 @@ impl GrammarInterpreter {
         }
     }
     
+    /// Seed the RNG of the GrammarInterpreter.
     pub fn seed(&mut self, seed: usize) {
         if seed == 0 {
             self.seed = 0xDEADBEEF;
@@ -27,6 +44,8 @@ impl GrammarInterpreter {
         }
     }
     
+    /// Generate one input and write it to the given output stream `stream`.
+    /// Returns the number of bytes written to `stream`.
     pub fn interpret<S: Write>(mut self, stream: &mut S) -> std::io::Result<usize> {
         let mut generated = 0;
         let mut stack = Vec::with_capacity(4096);
