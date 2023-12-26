@@ -82,6 +82,8 @@ and corresponds to the regular expression `a(b*)`.
 
 Peacock also supports the Gramatron format, which is a bit different and does not allow for comments.
 
+The non-terminal `<ENTRYPOINT>` is the entrypoint of the grammar.
+
 ## C API Documentation
 
 - `void seed_generator (size_t new_seed)`   
