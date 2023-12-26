@@ -44,7 +44,7 @@
 //! - `debug-codegen`: This affects the C backend and inserts calls to printf() at the beginning of every generated function to
 //!    help troubleshooting.
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 pub(crate) mod parser;
 

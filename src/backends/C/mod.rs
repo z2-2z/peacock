@@ -18,3 +18,4 @@ mod grammar;
 mod codegen;
 
 pub use codegen::CGenerator;
+pub(crate) use grammar::*;

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::grammar::{ContextFreeGrammar, Symbol};
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct LLTerminal(usize);
 
 impl LLTerminal {
@@ -11,7 +11,7 @@ impl LLTerminal {
     }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct LLNonTerminal(usize);
 
 impl LLNonTerminal {
@@ -20,7 +20,7 @@ impl LLNonTerminal {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum LLSymbol {
     Terminal(LLTerminal),
     NonTerminal(LLNonTerminal),
