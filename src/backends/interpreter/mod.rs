@@ -23,6 +23,7 @@ use crate::{
 pub struct GrammarInterpreter {
     grammar: LowLevelGrammar,
     seed: usize,
+    stack: Vec<LLSymbol>,
 }
 
 impl GrammarInterpreter {
@@ -32,6 +33,7 @@ impl GrammarInterpreter {
         Self {
             grammar: LowLevelGrammar::from_high_level_grammar(grammar),
             seed: 0xDEADBEEF,
+            stack: Vec::with_capacity(4096),
         }
     }
     
@@ -46,13 +48,13 @@ impl GrammarInterpreter {
     
     /// Generate one input and write it to the given output stream `stream`.
     /// Returns the number of bytes written to `stream`.
-    pub fn interpret<S: Write>(mut self, stream: &mut S) -> std::io::Result<usize> {
+    pub fn interpret<S: Write>(&mut self, stream: &mut S) -> std::io::Result<usize> {
         let mut generated = 0;
-        let mut stack = Vec::with_capacity(4096);
         
-        stack.push(LLSymbol::NonTerminal(*self.grammar.entrypoint()));
+        assert!(self.stack.is_empty());
+        self.stack.push(LLSymbol::NonTerminal(*self.grammar.entrypoint()));
         
-        while let Some(symbol) = stack.pop() {
+        while let Some(symbol) = self.stack.pop() {
             match symbol {
                 LLSymbol::Terminal(term) => {
                     let term = &self.grammar.terminals()[term.id()].as_bytes();
@@ -75,7 +77,7 @@ impl GrammarInterpreter {
                     let rule = &rules[rand % rules.len()];
                     
                     for symbol in rule.iter().rev() {
-                        stack.push(symbol.clone());
+                        self.stack.push(symbol.clone());
                     }
                 },
             }

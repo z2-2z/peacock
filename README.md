@@ -30,12 +30,13 @@ Clone the repo and execute
 ```
 cargo build --release
 ```
-This creates 4 ready-to-use tools:
+This creates 5 ready-to-use tools:
 
 1. `peacock-fuzz`: A coverage-guided fuzzer that can fuzz any binary compiled with AFL++'s compilers or anything that speaks AFL's forkserver protocol
 2. `peacock-dump`: peacock-fuzz saves crashes and queue items in a raw, binary format to disk. Use this tool to get a human readable output from any such file. All these binary files have the prefix `peacock-raw-`
 3. `peacock-compile`: Takes a grammar and compiles it to C code
 4. `peacock-merge`: Merge multiple grammar files into one or convert a grammar file from one format into another
+5. `peacock-gen`: Generate individual inputs from a grammar
 
 If you want more fine-grained control you can use the crate `peacock_fuzz`, which is the backbone of all the tools from above.
 

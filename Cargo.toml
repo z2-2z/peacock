@@ -50,6 +50,10 @@ path = "src/bin/compile.rs"
 name = "peacock-merge"
 path = "src/bin/merge.rs"
 
+[[bin]]
+name = "peacock-gen"
+path = "src/bin/gen.rs"
+
 [features]
 default = ["components"]
 
