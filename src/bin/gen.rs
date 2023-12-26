@@ -4,6 +4,7 @@ use peacock_fuzz::{
     grammar::ContextFreeGrammar,
     backends::interpreter::GrammarInterpreter,
 };
+use std::time::SystemTime;
 
 pub mod fuzz;
 use fuzz::GrammarFormat;
@@ -56,6 +57,9 @@ fn main() {
     if let Some(seed) = args.seed {
         let seed = seed.parse::<usize>().unwrap();
         interpreter.seed(seed);
+    } else {
+        let seed = SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() ^ std::process::id() as u64;
+        interpreter.seed(seed as usize);
     }
     
     for _ in 0..count {
