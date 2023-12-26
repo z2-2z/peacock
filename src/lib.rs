@@ -6,6 +6,7 @@
 //!   Current backends are
 //!   - `C`: Generate a grammar-based mutator in C
 //!   - `json`: Convert loaded grammar(s) into peacock format
+//!   - `interpreter`: Generate inputs by interpreting a grammar
 //! 
 //!   but you can easily write your own.
 //! - __runtime__: LibAFL components that you can use in your fuzzer to realize grammar-based mutations.
@@ -34,6 +35,8 @@
 //! backends::C::CGenerator::new().generate("output-file.c", grammar);
 //! // or
 //! backends::json::JsonGenerator::new().generate("output-file.json", grammar);
+//! // or
+//! GrammarInterpreter::new(grammar).interpret(&mut stdout());
 //! ```
 //! And that's it.
 //! 
