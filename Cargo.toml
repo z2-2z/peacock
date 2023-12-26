@@ -43,8 +43,8 @@ name = "peacock-fuzz"
 path = "src/bin/fuzz.rs"
 
 [[bin]]
-name = "peacock-gen"
-path = "src/bin/generate.rs"
+name = "peacock-compile"
+path = "src/bin/compile.rs"
 
 [[bin]]
 name = "peacock-merge"
