@@ -125,7 +125,7 @@ fn load_grammar(grammar_file: &str, grammar_format: GrammarFormat, out_dir: &str
         
         let cfg = cfg.build().unwrap();
         
-        CGenerator::new().generate(&c_file, cfg);
+        CGenerator::new().generate(&c_file, &cfg);
         
         /* Compile code into generator */
         compile_so(&generator_so, &c_file);

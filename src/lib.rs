@@ -32,11 +32,11 @@
 //! ```
 //! Then, you can plug the grammar into one of the provided backends:
 //! ```
-//! backends::C::CGenerator::new().generate("output-file.c", grammar);
+//! backends::C::CGenerator::new().generate("output-file.c", &grammar);
 //! // or
-//! backends::json::JsonGenerator::new().generate("output-file.json", grammar);
+//! backends::json::JsonGenerator::new().generate("output-file.json", &grammar);
 //! // or
-//! GrammarInterpreter::new(grammar).interpret(&mut stdout());
+//! GrammarInterpreter::new(&grammar).interpret(&mut stdout());
 //! ```
 //! And that's it.
 //! 

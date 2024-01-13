@@ -724,7 +724,7 @@ impl CGenerator {
     }
     
     /// Generate the C code for the given grammar `grammar` and write it to `output`.
-    pub fn generate<P: AsRef<Path>>(self, output: P, grammar: ContextFreeGrammar) {
+    pub fn generate<P: AsRef<Path>>(self, output: P, grammar: &ContextFreeGrammar) {
         let grammar = LowLevelGrammar::from_high_level_grammar(grammar);
         let outfile = File::create(output.as_ref()).expect("Could not create source file");
         let mut formatter = CFormatter::new(outfile);
@@ -764,6 +764,6 @@ mod tests {
         let cfg = ContextFreeGrammar::builder()
             .gramatron_grammar("test-data/grammars/gramatron.json").unwrap()
             .build().unwrap();
-        CGenerator::new().generate("/tmp/out.c", cfg);
+        CGenerator::new().generate("/tmp/out.c", &cfg);
     }
 }

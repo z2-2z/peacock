@@ -10,7 +10,7 @@
 //!     .build().unwrap();
 //! 
 //! // Then, create a single new grammar in peacock format.
-//! JsonGenerator::new().generate("merged-grammar.json", grammar);
+//! JsonGenerator::new().generate("merged-grammar.json", &grammar);
 //! ```
 
 mod generator;

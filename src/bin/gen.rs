@@ -52,7 +52,7 @@ fn main() {
     let cfg = builder.build().unwrap();
     
     let mut stream = BufWriter::new(stdout());
-    let mut interpreter = GrammarInterpreter::new(cfg);
+    let mut interpreter = GrammarInterpreter::new(&cfg);
     
     if let Some(seed) = args.seed {
         let seed = seed.parse::<usize>().unwrap();

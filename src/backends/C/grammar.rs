@@ -34,7 +34,7 @@ pub struct LowLevelGrammar {
 }
 
 impl LowLevelGrammar {
-    pub fn from_high_level_grammar(grammar: ContextFreeGrammar) -> Self {
+    pub fn from_high_level_grammar(grammar: &ContextFreeGrammar) -> Self {
         let mut rules = HashMap::new();
         let mut nonterm_map = HashMap::new();
         let mut nonterminals = Vec::new();
@@ -107,7 +107,7 @@ mod tests {
         let cfg = ContextFreeGrammar::builder()
             .peacock_grammar("test-data/grammars/unit_rules.json").unwrap()
             .build().unwrap();
-        let ll = LowLevelGrammar::from_high_level_grammar(cfg);
+        let ll = LowLevelGrammar::from_high_level_grammar(&cfg);
         println!("{:#?}", ll.rules());
         println!("terminals = {:?}", ll.terminals());
         println!("nonterminals = {:?}", ll.nonterminals());

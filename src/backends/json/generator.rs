@@ -29,7 +29,7 @@ impl JsonGenerator {
     }
     
     /// Write the production rules of the supplied `grammar` into the output file `path` in peacock format.
-    pub fn generate<P: AsRef<Path>>(self, path: P, grammar: ContextFreeGrammar) {
+    pub fn generate<P: AsRef<Path>>(self, path: P, grammar: &ContextFreeGrammar) {
         let mut json = json!({});
         let object = json.as_object_mut().unwrap();
         
@@ -72,7 +72,7 @@ mod tests {
             .gramatron_grammar("test-data/grammars/gramatron.json").unwrap()
             .optimize(false)
             .build().unwrap();
-        JsonGenerator::new().generate("/tmp/new.json", cfg);
+        JsonGenerator::new().generate("/tmp/new.json", &cfg);
         
         ContextFreeGrammar::builder()
             .peacock_grammar("/tmp/new.json").unwrap()

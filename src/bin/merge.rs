@@ -48,5 +48,5 @@ fn main() {
     }
     
     let cfg = builder.build().unwrap();
-    JsonGenerator::new().generate(args.output, cfg);
+    JsonGenerator::new().generate(args.output, &cfg);
 }
