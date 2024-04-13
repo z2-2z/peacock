@@ -11,11 +11,11 @@ use libafl::prelude::{
     OnDiskCorpus,
     StdMutationalStage, IndexesLenTimeMinimizerScheduler,
     StdWeightedScheduler, powersched::PowerSchedule,
-    StdFuzzer, ForkserverExecutor, TimeoutForkserverExecutor,
+    StdFuzzer, ForkserverExecutor,
     Fuzzer,
      TimeoutFeedback, HasCorpus, Corpus,
     Launcher, EventConfig, tui::ui::TuiUI, tui::TuiMonitor,
-    LlmpRestartingEventManager,
+    LlmpRestartingEventManager, CanTrack,
 };
 use libafl_bolts::prelude::{
     UnixShMemProvider, ShMemProvider, ShMem, AsMutSlice,
@@ -136,7 +136,7 @@ fn load_grammar(grammar_file: &str, grammar_format: GrammarFormat, out_dir: &str
 
 /* Harness */
 fn fuzz(args: Args) -> Result<(), Error> {
-    let mut run_client = |state: Option<_>, mut mgr: LlmpRestartingEventManager<_, _>, _core_id| {
+    let mut run_client = |state: Option<_>, mut mgr: LlmpRestartingEventManager<_, _, _>, _core_id| {
         let output_dir = Path::new(&args.output);
         let queue_dir = output_dir.join("queue");
         let crashes_dir = output_dir.join("crashes");
@@ -163,11 +163,11 @@ fn fuzz(args: Args) -> Result<(), Error> {
         
         std::env::set_var("AFL_MAP_SIZE", format!("{}", MAP_SIZE));
         
-        let edges_observer = unsafe { HitcountsMapObserver::new(StdMapObserver::new("shared_mem", shmem_buf)) };
+        let edges_observer = unsafe { HitcountsMapObserver::new(StdMapObserver::new("shared_mem", shmem_buf)).track_indices() };
         
         let time_observer = TimeObserver::new("time");
         
-        let map_feedback = MaxMapFeedback::tracking(&edges_observer, true, false);
+        let map_feedback = MaxMapFeedback::new(&edges_observer);
         
         let calibration = CalibrationStage::new(&map_feedback);
         
@@ -199,23 +199,26 @@ fn fuzz(args: Args) -> Result<(), Error> {
         
         let mutational = StdMutationalStage::with_max_iterations(mutator, 0);
         
-        let scheduler = IndexesLenTimeMinimizerScheduler::new(StdWeightedScheduler::with_schedule(
-            &mut state,
+        let scheduler = IndexesLenTimeMinimizerScheduler::new(
             &edges_observer,
-            Some(powerschedule),
-        ));
+            StdWeightedScheduler::with_schedule(
+                &mut state,
+                &edges_observer,
+                Some(powerschedule),
+            )
+        );
         
         let mut fuzzer = StdFuzzer::new(scheduler, feedback, objective);
         
-        let forkserver = ForkserverExecutor::builder()
+        let mut executor = ForkserverExecutor::builder()
             .program(&args.cmdline[0])
             .debug_child(debug_child)
             .parse_afl_cmdline(args.cmdline.get(1..).unwrap_or(&[]))
             .coverage_map_size(MAP_SIZE)
             .is_persistent(false)
+            .timeout(timeout)
+            .kill_signal(signal)
             .build_dynamic_map(edges_observer, tuple_list!(time_observer))?;
-        
-        let mut executor = TimeoutForkserverExecutor::with_signal(forkserver, timeout, signal)?;
         
         if let Some(corpus) = &args.corpus {
             state.load_initial_inputs(
