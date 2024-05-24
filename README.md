@@ -39,13 +39,7 @@ This creates 5 ready-to-use tools:
 5. `peacock-gen`: Generate individual inputs from a grammar
 
 If you want more fine-grained control you can use the crate `peacock_fuzz`, which is the backbone of all the tools from above.
-
-Execute
-```
-cargo doc --open
-```
-in order to get started with peacock as a library.
-
+See the documentation at [docs.rs](https://docs.rs/peacock-fuzz) in order to get started with peacock as a library.
 
 ## How to write grammars
 
@@ -119,7 +113,5 @@ Macros:
 - `MAKE_VISIBLE`: Set visibility of functions from above to default
 - `SEED`: Compile-time seed for the RNG
 - `DISABLE_rand`: Don't include the internal rand function and call an external one with the signature `size_t rand (void)`
-- `DISSABLE_seed`: Don't include the `seed_generator` function and call an external one with the same signature from above.
+- `DISABLE_seed`: Don't include the `seed_generator` function and call an external one with the same signature from above.
 
-## Warning
-This project is currently in a beta stage. Not all features are implemented yet and bugs will occur.
