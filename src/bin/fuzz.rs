@@ -35,6 +35,7 @@ use peacock_fuzz::{
 };
 
 const PRELOAD_ENV: &str = "PEACOCK_PRELOAD";
+const CC_ENV: &str = "CC";
 
 fn mkdir(dir: &str) {
     match std::fs::create_dir(dir) {
@@ -93,8 +94,14 @@ struct Args {
 }
 
 fn compile_so(output: &Path, input: &Path) {
-    let output = Command::new("cc")
-        .args(["-o", &output.to_string_lossy(), "-flto", "-s", "-fvisibility=hidden", "-DMAKE_VISIBLE", "-O3", "-fPIC", "-shared", &input.to_string_lossy(), "-nostdlib"])
+    let cc = if let Ok(var) = std::env::var(CC_ENV) {
+        var
+    } else {
+        "cc".to_string()
+    };
+    
+    let output = Command::new(cc)
+        .args(["-o", &output.to_string_lossy(), "-flto", "-s", "-fvisibility=hidden", "-DMAKE_VISIBLE", "-Ofast", "-march=native", "-fomit-frame-pointer", "-fno-stack-protector", "-fPIC", "-shared", &input.to_string_lossy(), "-nostdlib"])
         .output()
         .expect("Could not launch C compiler");
     
