@@ -109,9 +109,8 @@ The non-terminal `<ENTRYPOINT>` is the entrypoint of the grammar.
   
   
 Macros:
-- `MULTITHREADING`: Define this variable to make the mutator completely thread-safe
-- `MAKE_VISIBLE`: Set visibility of functions from above to default
-- `SEED`: Compile-time seed for the RNG
-- `DISABLE_rand`: Don't include the internal rand function and call an external one with the signature `size_t rand (void)`
-- `DISABLE_seed`: Don't include the `seed_generator` function and call an external one with the same signature from above.
-
+- `MAKE_THREAD_SAFE`: Define this to make the mutator completely thread-safe
+- `MAKE_VISIBLE`: Define this to explicitly set the visibility of the functions from above to "default"
+- `STATIC_SEED`: Compile-time seed for the RNG
+- `DISABLE_rand`: Don't include the internal `rand()` function and use an external one with the signature `size_t rand (void)`
+- `DISABLE_seed_generator`: Don't include the `seed_generator` function and call an external one with the same signature from above.

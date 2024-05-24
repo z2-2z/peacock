@@ -63,7 +63,7 @@ fn emit_macros(fmt: &mut CFormatter<File>) {
     fmt.write("/* Helper Macros */");
     
     fmt.write("#undef THREAD_LOCAL");
-    fmt.write("#ifdef MULTITHREADING");
+    fmt.write("#ifdef MAKE_THREAD_SAFE");
     fmt.write("#define THREAD_LOCAL __thread");
     fmt.write("#else");
     fmt.write("#define THREAD_LOCAL");
@@ -94,12 +94,12 @@ fn emit_macros(fmt: &mut CFormatter<File>) {
 fn emit_rand(fmt: &mut CFormatter<File>) {
     fmt.write("/* RNG */");
     
-    fmt.write("#ifndef SEED");
-    fmt.write(" #define SEED 0x35c6be9ba2548264");
+    fmt.write("#ifndef STATIC_SEED");
+    fmt.write(" #define STATIC_SEED 0x35c6be9ba2548264");
     fmt.write("#endif");
     fmt.blankline();
     
-    fmt.write("static THREAD_LOCAL size_t rand_state = SEED;");
+    fmt.write("static THREAD_LOCAL size_t rand_state = STATIC_SEED;");
     fmt.blankline();
     
     fmt.write("#ifndef DISABLE_rand");
@@ -117,7 +117,7 @@ fn emit_rand(fmt: &mut CFormatter<File>) {
     fmt.write("#endif");
     fmt.blankline();
     
-    fmt.write("#ifndef DISABLE_seed");
+    fmt.write("#ifndef DISABLE_seed_generator");
     fmt.write("EXPORT_FUNCTION");
     fmt.write("void seed_generator (size_t new_seed) {");
     fmt.indent();
