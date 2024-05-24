@@ -1,7 +1,7 @@
 [package]
 name = "peacock-fuzz"
 description = "Library to parse context-free grammars and create grammar-based fuzzing tools"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 license-file = "COPYING"
 readme = "README.md"
@@ -9,6 +9,8 @@ repository = "https://github.com/z2-2z/peacock"
 keywords = ["fuzzing", "grammars"]
 include = [
     "/src",
+    "/COPYING",
+    "/README.md",
 ]
 
 [profile.release]

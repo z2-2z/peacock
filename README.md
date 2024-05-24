@@ -112,5 +112,5 @@ Macros:
 - `MAKE_THREAD_SAFE`: Define this to make the mutator completely thread-safe
 - `MAKE_VISIBLE`: Define this to explicitly set the visibility of the functions from above to "default"
 - `STATIC_SEED`: Compile-time seed for the RNG
-- `DISABLE_rand`: Don't include the internal `rand()` function and use an external one with the signature `size_t rand (void)`
-- `DISABLE_seed_generator`: Don't include the `seed_generator` function and use an external one with the same signature from above.
+- `DISABLE_rand`: Don't include the internal `rand` function and use an external one with the signature `size_t rand (void)`
+- `DISABLE_seed_generator`: Don't include the function `seed_generator`
