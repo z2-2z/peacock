@@ -13,18 +13,6 @@ This project is a reimplementation of [Gramatron](https://github.com/HexHive/Gra
 - __extendable__: at its core, peacock is a library that you can use at your leisure to customize every step of the grammar fuzzing process
 - __backwards compatible__: it works with grammars that you have already written for other tools
 
-## How it works
-Peacock implements so-called "grammar-based mutations". This means that it will mutate its inputs in such a way that they will always adhere to a given grammar.     
-
-The way mutations work is the same as in Gramatron. A grammar is converted to a [PDA](https://en.wikipedia.org/wiki/Pushdown_automaton) such that an input can be represented as a walk through the automaton. Then, a mutation of an input is simply a modification of an automaton walk. We cut off the walk at a random point and let it find a new random path through the automaton from there.
-
-While Gramatron and LibAFL realize the automaton as an adjacency matrix,
-peacock generates C code that encodes the automaton in its control flow. This saves us a lot of memory accesses and makes the mutation procedure faster.
-
-The generated C code exposes a certain API that can be used by any application, e.g. a libfuzzer harness, an AFL++ custom mutator or even Rust code.
-
-But peacock also ships a ready to use fuzzer that can fuzz any binary that has been compiled with AFL++'s compilers or implements an AFL-style forkserver.
-
 ## How to use it
 Clone the repo and execute
 ```
@@ -41,8 +29,19 @@ This creates 5 ready-to-use tools:
 If you want more fine-grained control you can use the crate `peacock_fuzz`, which is the backbone of all the tools from above.
 See the documentation at [docs.rs](https://docs.rs/peacock-fuzz) in order to get started with peacock as a library.
 
-## How to write grammars
+## How it works
+Peacock is a fuzzer that implements so-called "grammar-based mutations". This means that it will mutate its inputs in such a way that they will always adhere to a given grammar.     
 
+The way mutations work is the same as in Gramatron. A grammar is converted to a [PDA](https://en.wikipedia.org/wiki/Pushdown_automaton) such that an input can be represented as a walk through the automaton. Then, a mutation of an input is simply a modification of an automaton walk. We cut off the walk at a random point and let it find a new random path through the automaton from there.
+
+While Gramatron and LibAFL realize the automaton as an adjacency matrix,
+peacock generates C code that encodes the automaton in its control flow. This saves us a lot of memory accesses and makes the mutation procedure faster.
+
+The generated C code exposes a certain API that can be used by any application, e.g. a libfuzzer harness, an AFL++ custom mutator or even Rust code.
+
+But peacock also ships a ready to use fuzzer that can fuzz any binary that has been compiled with AFL++'s compilers or implements an AFL-style forkserver.
+
+## How to write grammars
 Peacock accepts its context-free grammars in JSON format.
 A context-free grammar has production rules of the form:
 ```
@@ -80,7 +79,6 @@ Peacock also supports the Gramatron format, which is a bit different and does no
 The non-terminal `<ENTRYPOINT>` is the entrypoint of the grammar.
 
 ## C API Documentation
-
 - `void seed_generator (size_t new_seed)`   
   Supply a seed for the RNG of the mutator.
 - `size_t unparse_sequence (size_t* seq_buf, size_t seq_capacity, unsigned char* input, size_t input_len)`   
