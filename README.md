@@ -30,7 +30,7 @@ If you want more fine-grained control you can use the crate `peacock_fuzz`, whic
 See the documentation at [docs.rs](https://docs.rs/peacock-fuzz) in order to get started with peacock as a library.
 
 ## How it works
-Peacock is a fuzzer that implements so-called "grammar-based mutations". This means that it will mutate its inputs in such a way that they will always adhere to a given grammar.     
+Peacock is a fuzzer that implements so-called "grammar-based mutations". This means that it will mutate its inputs in such a way that they will always adhere to a given [grammar](https://en.wikipedia.org/wiki/Formal_grammar).     
 
 The way mutations work is the same as in Gramatron. A grammar is converted to a [PDA](https://en.wikipedia.org/wiki/Pushdown_automaton) such that an input can be represented as a walk through the automaton. Then, a mutation of an input is simply a modification of an automaton walk. We cut off the walk at a random point and let it find a new random path through the automaton from there.
 
@@ -39,7 +39,7 @@ peacock generates C code that encodes the automaton in its control flow. This sa
 
 The generated C code exposes a certain API that can be used by any application, e.g. a libfuzzer harness, an AFL++ custom mutator or even Rust code.
 
-But peacock also ships a ready to use fuzzer that can fuzz any binary that has been compiled with AFL++'s compilers or implements an AFL-style forkserver.
+Peacock also ships a ready to use fuzzer that can fuzz any binary that has been compiled with AFL++'s compilers or implements an AFL-style forkserver.
 
 ## How to write grammars
 Peacock accepts its context-free grammars in JSON format.
