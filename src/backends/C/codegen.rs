@@ -152,7 +152,7 @@ fn emit_mutation_declarations(grammar: &LowLevelGrammar, fmt: &mut CFormatter<Fi
     fmt.write("/* Forward declarations for sequence mutation functions */");
     
     for nonterm in grammar.rules().keys() {
-        fmt.write(format!("static int mutate_seq_nonterm{} (Sequence* const, size_t* const);", *nonterm));
+        fmt.write(format!("static int mutate_seq_nonterm{} (size_t* const, size_t* const, const size_t, size_t* const);", *nonterm));
     }
     
     fmt.blankline();
@@ -161,7 +161,7 @@ fn emit_mutation_declarations(grammar: &LowLevelGrammar, fmt: &mut CFormatter<Fi
 fn emit_mutation_function_rule(rule: &[LLSymbol], fmt: &mut CFormatter<File>) {
     for symbol in rule {
         if let LLSymbol::NonTerminal(dst) = symbol {
-            fmt.write(format!("if (UNLIKELY(!mutate_seq_nonterm{}(seq, step))) {{", dst.id()));
+            fmt.write(format!("if (UNLIKELY(!mutate_seq_nonterm{}(buf, len, capacity, step))) {{", dst.id()));
             fmt.indent();
             fmt.write("return 0;");
             fmt.unindent();
@@ -172,18 +172,18 @@ fn emit_mutation_function_rule(rule: &[LLSymbol], fmt: &mut CFormatter<File>) {
 }
 
 fn emit_mutation_function_single(rule: &[LLSymbol], fmt: &mut CFormatter<File>) {
-    fmt.write("size_t idx = seq->len;");
+    fmt.write("size_t idx = *len;");
     fmt.blankline();
     fmt.write("if (*step >= idx) {");
     fmt.indent();
-    fmt.write("if (UNLIKELY(idx >= seq->capacity)) {");
+    fmt.write("if (UNLIKELY(idx >= capacity)) {");
     fmt.indent();
     fmt.write("return 0;");
     fmt.unindent();
     fmt.write("}");
     fmt.blankline();
-    fmt.write("seq->buf[idx] = 0;");
-    fmt.write("seq->len = idx + 1;");
+    fmt.write("buf[idx] = 0;");
+    fmt.write("*len = idx + 1;");
     fmt.unindent();
     fmt.write("}");
     fmt.blankline();
@@ -199,14 +199,14 @@ fn emit_mutation_function_single(rule: &[LLSymbol], fmt: &mut CFormatter<File>) 
 fn emit_mutation_function_multiple(rules: &[Vec<LLSymbol>], fmt: &mut CFormatter<File>) {
     let have_nonterminals = rules_have_nonterminals(rules);
     
-    fmt.write("size_t idx = seq->len;");
+    fmt.write("size_t idx = *len;");
     fmt.write("size_t target;");
     fmt.blankline();
     
     if have_nonterminals {
         fmt.write("if (*step < idx) {");
         fmt.indent();
-        fmt.write("target = seq->buf[*step];");
+        fmt.write("target = buf[*step];");
         fmt.unindent();
         fmt.write("} else {");
     } else {
@@ -214,15 +214,15 @@ fn emit_mutation_function_multiple(rules: &[Vec<LLSymbol>], fmt: &mut CFormatter
     }
     
     fmt.indent();
-    fmt.write("if (UNLIKELY(idx >= seq->capacity)) {");
+    fmt.write("if (UNLIKELY(idx >= capacity)) {");
     fmt.indent();
     fmt.write("return 0;");
     fmt.unindent();
     fmt.write("}");
     fmt.blankline();
     fmt.write(format!("target = rand() % {};", rules.len()));
-    fmt.write("seq->buf[idx] = target;");
-    fmt.write("seq->len = idx + 1;");
+    fmt.write("buf[idx] = target;");
+    fmt.write("*len = idx + 1;");
     fmt.unindent();
     fmt.write("}");
     fmt.blankline();
@@ -261,7 +261,7 @@ fn emit_mutation_function_multiple(rules: &[Vec<LLSymbol>], fmt: &mut CFormatter
 
 fn emit_mutation_function(nonterm: usize, rules: &[Vec<LLSymbol>], grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
     fmt.write(format!("// This is the sequence mutation function for non-terminal {:?}", grammar.nonterminals()[nonterm]));
-    fmt.write(format!("static int mutate_seq_nonterm{} (Sequence* const seq, size_t* const step) {{", nonterm));
+    fmt.write(format!("static int mutate_seq_nonterm{} (size_t* const buf, size_t* const len, const size_t capacity, size_t* const step) {{", nonterm));
     fmt.indent();
     
     if rules.is_empty() {
@@ -285,23 +285,15 @@ fn emit_mutation_entrypoint(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File
     #[cfg(feature = "debug-codegen")]
     fmt.write("printf(\"Calling mutate_sequence(%p, %lu, %lu)\\n\", buf, len, capacity);");
     
-    fmt.write("if (UNLIKELY(!buf || !capacity)) {");
+    fmt.write("if (UNLIKELY(!buf | !capacity)) {");
     fmt.indent();
     fmt.write("return 0;");
     fmt.unindent();
     fmt.write("}");
     
-    fmt.write("Sequence seq = {");
-    fmt.indent();
-    fmt.write(".buf = buf,");
-    fmt.write(".len = len,");
-    fmt.write(".capacity = capacity,");
-    fmt.unindent();
-    fmt.write("};");
-    
     fmt.write("size_t step = 0;");
-    fmt.write(format!("mutate_seq_nonterm{}(&seq, &step);", grammar.entrypoint().id()));
-    fmt.write("return seq.len;");
+    fmt.write(format!("mutate_seq_nonterm{}(buf, &len, capacity, &step);", grammar.entrypoint().id()));
+    fmt.write("return len;");
     
     fmt.unindent();
     fmt.write("}");
