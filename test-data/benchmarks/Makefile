@@ -8,4 +8,4 @@ nop: nop.c
 	$(AFL_PATH)/afl-clang-lto -o $@ -O3 $<
 	
 throughput: throughput.c output/generator.c
-	gcc -O3 -o $@ $^ -Ioutput
+	clang -Ofast -march=native -fomit-frame-pointer -fno-stack-protector -o $@ $^ -Ioutput
