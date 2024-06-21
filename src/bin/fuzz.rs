@@ -14,11 +14,13 @@ use libafl::prelude::{
     StdFuzzer, ForkserverExecutor,
     Fuzzer,
      TimeoutFeedback, HasCorpus, Corpus,
-    Launcher, EventConfig, tui::ui::TuiUI, tui::TuiMonitor,
+    Launcher, EventConfig,
     LlmpRestartingEventManager, CanTrack,
 };
+#[cfg(not(debug_assertions))]
+use libafl::prelude::{tui::ui::TuiUI, tui::TuiMonitor};
 use libafl_bolts::prelude::{
-    UnixShMemProvider, ShMemProvider, ShMem, AsMutSlice,
+    UnixShMemProvider, ShMemProvider, ShMem, AsSliceMut,
     current_nanos, StdRand, tuple_list,
     Cores,
 };
@@ -152,11 +154,7 @@ fn fuzz(args: Args) -> Result<(), Error> {
         let powerschedule = PowerSchedule::EXPLORE;
         let timeout = Duration::from_secs(10);
         let signal = str::parse::<Signal>("SIGKILL").unwrap();
-        
-        #[cfg(debug_assertions)]
-        let debug_child = true;
-        #[cfg(not(debug_assertions))]
-        let debug_child = false;
+        let debug_child = cfg!(debug_assertions);
         
         if let Ok(value) = std::env::var(PRELOAD_ENV) {
             std::env::set_var("LD_PRELOAD", value);
@@ -166,8 +164,7 @@ fn fuzz(args: Args) -> Result<(), Error> {
         let mut shmem_provider = UnixShMemProvider::new()?;
         let mut shmem = shmem_provider.new_shmem(MAP_SIZE)?;
         shmem.write_to_env("__AFL_SHM_ID")?;
-        let shmem_buf = shmem.as_mut_slice();
-        
+        let shmem_buf = shmem.as_slice_mut();
         std::env::set_var("AFL_MAP_SIZE", format!("{}", MAP_SIZE));
         
         let edges_observer = unsafe { HitcountsMapObserver::new(StdMapObserver::new("shared_mem", shmem_buf)).track_indices() };
@@ -180,7 +177,7 @@ fn fuzz(args: Args) -> Result<(), Error> {
         
         let mut feedback = feedback_or!(
             map_feedback,
-            TimeFeedback::with_observer(&time_observer)
+            TimeFeedback::new(&time_observer)
         );
         
         let mut objective = feedback_or!(
@@ -204,7 +201,7 @@ fn fuzz(args: Args) -> Result<(), Error> {
 
         let mutator = PeacockMutator::new();
         
-        let mutational = StdMutationalStage::with_max_iterations(mutator, 0);
+        let mutational = StdMutationalStage::with_max_iterations(mutator, 1);
         
         let scheduler = IndexesLenTimeMinimizerScheduler::new(
             &edges_observer,
@@ -244,7 +241,6 @@ fn fuzz(args: Args) -> Result<(), Error> {
             &mut mgr,
             &[
                 queue_dir,
-                //crashes_dir,
             ]
         )?;
         
@@ -267,12 +263,17 @@ fn fuzz(args: Args) -> Result<(), Error> {
     
     let shmem_provider = UnixShMemProvider::new()?;
     
-    let tui = TuiUI::new(
-        "peacock".to_string(),
-        true
-    );
-    let monitor = TuiMonitor::new(tui);
-    //let monitor = libafl::prelude::SimplePrintingMonitor::new();
+    #[cfg(not(debug_assertions))]
+    let monitor = {
+        let tui = TuiUI::new(
+            "peacock".to_string(),
+            true
+        );
+        TuiMonitor::new(tui)
+    };
+    
+    #[cfg(debug_assertions)]
+    let monitor = libafl::prelude::MultiMonitor::new(|s| println!("{}", s));
     
     let cores = Cores::from_cmdline(&args.cores).expect("Invalid core specification");
     

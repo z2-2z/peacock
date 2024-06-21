@@ -13,7 +13,7 @@ fn main() {
         .entrypoint("PROGRAM")
         .build().unwrap();
     
-    CGenerator::new().generate(GENERATOR_FILE, cfg);
+    CGenerator::new().generate(GENERATOR_FILE, &cfg);
     
     cc::Build::new()
         .file(GENERATOR_FILE)

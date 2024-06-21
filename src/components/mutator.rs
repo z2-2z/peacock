@@ -4,6 +4,7 @@ use libafl_bolts::prelude::{
 use libafl::prelude::{
     Mutator, MutationResult, Error, HasRand,
 };
+use std::borrow::Cow;
 
 use crate::components::{
     PeacockInput,
@@ -22,8 +23,9 @@ impl PeacockMutator {
 }
 
 impl Named for PeacockMutator {
-    fn name(&self) -> &str {
-        "PeacockMutator"
+    fn name(&self) -> &Cow<'static, str> {
+        static NAME: Cow<'static, str> = Cow::Borrowed("PeacockMutator");
+        &NAME
     }
 }
 
@@ -32,7 +34,7 @@ where
     S: HasRand,
 {
     fn mutate(&mut self, state: &mut S, input: &mut PeacockInput) -> Result<MutationResult, Error> {
-        let len = state.rand_mut().below(input.sequence().len() as u64) as usize;
+        let len = state.rand_mut().below(input.sequence().len());
         input.sequence_mut().truncate(len);
         generator_mutate(input.sequence_mut());
         Ok(MutationResult::Mutated)
