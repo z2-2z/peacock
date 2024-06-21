@@ -36,7 +36,7 @@
 //! // or
 //! backends::json::JsonGenerator::new().generate("output-file.json", &grammar);
 //! // or
-//! GrammarInterpreter::new(&grammar).interpret(&mut stdout());
+//! backends::interpreter::GrammarInterpreter::new(&grammar).interpret(&mut io::stdout());
 //! ```
 //! And that's it.
 //! 
