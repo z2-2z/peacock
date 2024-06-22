@@ -149,6 +149,17 @@ fn load_grammar(args: &Args) {
 
 /* Harness */
 fn fuzz(args: Args) -> Result<(), Error> {
+    let mut map_size = if let Ok(value) = std::env::var(MAP_SIZE_ENV) {
+        std::env::remove_var(MAP_SIZE_ENV);
+        value.parse().expect("Invalid map size speficiation")
+    } else {
+        DEFAULT_MAP_SIZE
+    };
+    
+    if map_size % 64 != 0 {
+        map_size = ((map_size + 63) >> 6) << 6;
+    }
+    
     let mut run_client = |state: Option<_>, mut mgr: LlmpRestartingEventManager<_, _, _>, core_id: CoreId| {
         let output_dir = Path::new(&args.output);
         let queue_dir = output_dir.join("queue");
@@ -158,12 +169,6 @@ fn fuzz(args: Args) -> Result<(), Error> {
         let timeout = Duration::from_secs(10);
         let signal = str::parse::<Signal>("SIGKILL").unwrap();
         let debug_child = cfg!(debug_assertions);
-        let map_size = if let Ok(value) = std::env::var(MAP_SIZE_ENV) {
-            std::env::remove_var(MAP_SIZE_ENV);
-            value.parse().expect("Invalid map size speficiation")
-        } else {
-            DEFAULT_MAP_SIZE
-        };
         
         if let Ok(value) = std::env::var(PRELOAD_ENV) {
             std::env::set_var("LD_PRELOAD", value);
