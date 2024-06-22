@@ -22,7 +22,7 @@ use libafl::prelude::{tui::ui::TuiUI, tui::TuiMonitor};
 use libafl_bolts::prelude::{
     UnixShMemProvider, ShMemProvider, ShMem, AsSliceMut,
     current_nanos, StdRand, tuple_list,
-    Cores,
+    Cores, CoreId,
 };
 use peacock_fuzz::{
     grammar::ContextFreeGrammar,
@@ -38,22 +38,10 @@ use peacock_fuzz::{
 
 const PRELOAD_ENV: &str = "PEACOCK_PRELOAD";
 const CC_ENV: &str = "CC";
+const MAP_SIZE_ENV: &str = "PEACOCK_MAP_SIZE";
 
-fn mkdir(dir: &str) {
-    match std::fs::create_dir(dir) {
-        Ok(()) => {},
-        Err(err) => if err.kind() != std::io::ErrorKind::AlreadyExists {
-            panic!("Could not create directory {}", dir);
-        }
-    }
-}
-
-/// Return true if a is newer than b
-fn newer<P1: AsRef<Path>, P2: AsRef<Path>>(a: P1, b: P2) -> bool {
-    let a = std::fs::metadata(a).unwrap().modified().unwrap();
-    let b = std::fs::metadata(b).unwrap().modified().unwrap();
-    a > b
-}
+const DEFAULT_MAP_SIZE: usize = 2_621_440;
+const DEFAULT_CC: &str = "cc";
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
 pub enum GrammarFormat {
@@ -95,11 +83,27 @@ struct Args {
     cmdline: Vec<String>,
 }
 
-fn compile_so(output: &Path, input: &Path) {
+fn mkdir(dir: &str) {
+    match std::fs::create_dir(dir) {
+        Ok(()) => {},
+        Err(err) => if err.kind() != std::io::ErrorKind::AlreadyExists {
+            panic!("Could not create directory {}", dir);
+        }
+    }
+}
+
+/// Return true if a is newer than b
+fn is_newer<P1: AsRef<Path>, P2: AsRef<Path>>(a: P1, b: P2) -> bool {
+    let a = std::fs::metadata(a).unwrap().modified().unwrap();
+    let b = std::fs::metadata(b).unwrap().modified().unwrap();
+    a > b
+}
+
+fn compile_source(output: &Path, input: &Path) {
     let cc = if let Ok(var) = std::env::var(CC_ENV) {
         var
     } else {
-        "cc".to_string()
+        DEFAULT_CC.to_string()
     };
     
     let output = Command::new(cc)
@@ -112,32 +116,32 @@ fn compile_so(output: &Path, input: &Path) {
     }
 }
 
-fn load_grammar(grammar_file: &str, grammar_format: GrammarFormat, out_dir: &str, entrypoint: Option<&String>) {
-    let generator_so = PathBuf::from(format!("{}/generator.so", out_dir));
-    let c_file = PathBuf::from(format!("{}/generator.c", out_dir));
+fn generate_source(args: &Args, c_file: &Path) {
+    let mut cfg = ContextFreeGrammar::builder();
+        
+    match &args.format {
+        GrammarFormat::Peacock => cfg = cfg.peacock_grammar(&args.grammar).unwrap(),
+        GrammarFormat::Gramatron => cfg = cfg.gramatron_grammar(&args.grammar).unwrap(),
+    }
     
-    mkdir(out_dir);
-    if !generator_so.exists() || newer(grammar_file, &generator_so) {
+    if let Some(entrypoint) = &args.entrypoint {
+        cfg = cfg.entrypoint(entrypoint);
+    }
+    
+    let cfg = cfg.build().unwrap();
+    
+    CGenerator::new().generate(c_file, &cfg);
+}
+
+fn load_grammar(args: &Args) {
+    let generator_so = PathBuf::from(format!("{}/generator.so", &args.output));
+    let c_file = PathBuf::from(format!("{}/generator.c", &args.output));
+    
+    mkdir(&args.output);
+    if !generator_so.exists() || is_newer(&args.grammar, &generator_so) {
         println!("Compiling generator.so ...");
-        
-        /* Generate code from grammar */
-        let mut cfg = ContextFreeGrammar::builder();
-        
-        match grammar_format {
-            GrammarFormat::Peacock => cfg = cfg.peacock_grammar(grammar_file).unwrap(),
-            GrammarFormat::Gramatron => cfg = cfg.gramatron_grammar(grammar_file).unwrap(),
-        }
-        
-        if let Some(entrypoint) = entrypoint {
-            cfg = cfg.entrypoint(entrypoint);
-        }
-        
-        let cfg = cfg.build().unwrap();
-        
-        CGenerator::new().generate(&c_file, &cfg);
-        
-        /* Compile code into generator */
-        compile_so(&generator_so, &c_file);
+        generate_source(args, &c_file);
+        compile_source(&generator_so, &c_file);
     }
     
     load_generator(generator_so);
@@ -145,16 +149,21 @@ fn load_grammar(grammar_file: &str, grammar_format: GrammarFormat, out_dir: &str
 
 /* Harness */
 fn fuzz(args: Args) -> Result<(), Error> {
-    let mut run_client = |state: Option<_>, mut mgr: LlmpRestartingEventManager<_, _, _>, _core_id| {
+    let mut run_client = |state: Option<_>, mut mgr: LlmpRestartingEventManager<_, _, _>, core_id: CoreId| {
         let output_dir = Path::new(&args.output);
         let queue_dir = output_dir.join("queue");
         let crashes_dir = output_dir.join("crashes");
-        const MAP_SIZE: usize = 2_621_440;
-        let seed = current_nanos();
+        let seed = current_nanos().rotate_left(core_id.0 as u32);
         let powerschedule = PowerSchedule::EXPLORE;
         let timeout = Duration::from_secs(10);
         let signal = str::parse::<Signal>("SIGKILL").unwrap();
         let debug_child = cfg!(debug_assertions);
+        let map_size = if let Ok(value) = std::env::var(MAP_SIZE_ENV) {
+            std::env::remove_var(MAP_SIZE_ENV);
+            value.parse().expect("Invalid map size speficiation")
+        } else {
+            DEFAULT_MAP_SIZE
+        };
         
         if let Ok(value) = std::env::var(PRELOAD_ENV) {
             std::env::set_var("LD_PRELOAD", value);
@@ -162,10 +171,10 @@ fn fuzz(args: Args) -> Result<(), Error> {
         }
         
         let mut shmem_provider = UnixShMemProvider::new()?;
-        let mut shmem = shmem_provider.new_shmem(MAP_SIZE)?;
+        let mut shmem = shmem_provider.new_shmem(map_size)?;
         shmem.write_to_env("__AFL_SHM_ID")?;
         let shmem_buf = shmem.as_slice_mut();
-        std::env::set_var("AFL_MAP_SIZE", format!("{}", MAP_SIZE));
+        std::env::set_var("AFL_MAP_SIZE", format!("{}", map_size));
         
         let edges_observer = unsafe { HitcountsMapObserver::new(StdMapObserver::new("shared_mem", shmem_buf)).track_indices() };
         
@@ -218,41 +227,43 @@ fn fuzz(args: Args) -> Result<(), Error> {
             .program(&args.cmdline[0])
             .debug_child(debug_child)
             .parse_afl_cmdline(args.cmdline.get(1..).unwrap_or(&[]))
-            .coverage_map_size(MAP_SIZE)
+            .coverage_map_size(map_size)
             .is_persistent(false)
             .timeout(timeout)
             .kill_signal(signal)
             .build_dynamic_map(edges_observer, tuple_list!(time_observer))?;
         
-        if let Some(corpus) = &args.corpus {
+        if state.corpus().count() == 0 {
+            if let Some(corpus) = &args.corpus {
+                state.load_initial_inputs(
+                    &mut fuzzer,
+                    &mut executor,
+                    &mut mgr,
+                    &[
+                        PathBuf::from(corpus),
+                    ],
+                )?;
+            }
+            
             state.load_initial_inputs(
                 &mut fuzzer,
                 &mut executor,
                 &mut mgr,
                 &[
-                    PathBuf::from(corpus),
-                ],
+                    queue_dir,
+                ]
             )?;
-        }
-        
-        state.load_initial_inputs(
-            &mut fuzzer,
-            &mut executor,
-            &mut mgr,
-            &[
-                queue_dir,
-            ]
-        )?;
-        
-        if state.corpus().count() == 0 {
-            let mut generator = PeacockGenerator::new();
-            state.generate_initial_inputs_forced(
-                &mut fuzzer,
-                &mut executor,
-                &mut generator,
-                &mut mgr,
-                16,
-            )?;
+            
+            if state.corpus().count() == 0 {
+                let mut generator = PeacockGenerator::new();
+                state.generate_initial_inputs_forced(
+                    &mut fuzzer,
+                    &mut executor,
+                    &mut generator,
+                    &mut mgr,
+                    16,
+                )?;
+            }
         }
         
         let mut stages = tuple_list!(calibration, mutational);
@@ -293,6 +304,6 @@ fn fuzz(args: Args) -> Result<(), Error> {
 
 pub fn main() {
     let args = Args::parse();
-    load_grammar(&args.grammar, args.format, &args.output, args.entrypoint.as_ref());
+    load_grammar(&args);
     fuzz(args).expect("Could not launch fuzzer");
 }
