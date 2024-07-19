@@ -1,5 +1,5 @@
 <div align="center">
-    <img align="center" src="logo.png">
+    <a href="https://crates.io/crates/peacock-fuzz"><img align="center" src="logo.png"></a>
     <b>~~~ fuzzing with grammar-based mutations ~~~</b>
 </div>
 
@@ -7,11 +7,16 @@
 
 This project is a reimplementation of [Gramatron](https://github.com/HexHive/Gramatron) that is
 
-- __performant__: 4x higher throughput than Gramatron or LibAFL's Gramatron implementation
+- __performant__: 4x higher throughput than LibAFL's Gramatron implementation
 - __versatile__: usable with LibAFL, libfuzzer, in a custom AFL++ mutator or standalone
 - __easy to use__: no more orchestration of different scripts to get the fuzzing campaign running, everything is batteries-included
 - __extendable__: at its core, peacock is a library that you can use at your leisure to customize every step of the grammar fuzzing process
 - __backwards compatible__: it works with grammars that you have already written for other tools
+
+## What's inside
+1. A __standalone fuzzer__ similar to afl-fuzz that employs grammar-based mutations
+2. __LibAFL components__ to build your own grammar-based fuzzer
+3. Grammar mutation procedure generated as __C code__ that you can employ in other contexts
 
 ## How to use it
 Clone the repo and execute
@@ -38,8 +43,6 @@ While Gramatron and LibAFL realize the automaton as an adjacency matrix,
 peacock generates C code that encodes the automaton in its control flow. This saves us a lot of memory accesses and makes the mutation procedure faster.
 
 The generated C code exposes a certain API that can be used by any application, e.g. a libfuzzer harness, an AFL++ custom mutator or even Rust code.
-
-Peacock also ships a ready to use fuzzer that can fuzz any binary that has been compiled with AFL++'s compilers or implements an AFL-style forkserver.
 
 ## How to write grammars
 Peacock accepts its context-free grammars in JSON format.
