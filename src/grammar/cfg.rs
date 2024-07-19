@@ -269,7 +269,10 @@ impl ContextFreeGrammar {
             if is_mixed(rule.rhs()) {
                 for j in 0..rule.rhs().len() {
                     if let Symbol::Terminal(term) = &rule.rhs()[j] {
-                        let non_term = terms.entry(term.clone()).or_insert_with(|| NonTerminal(format!("(term:{})", term.content()))).clone();
+                        let non_term = terms
+                            .entry(term.clone())
+                            .or_insert_with(|| NonTerminal(format!("(term:{})", term.content())))
+                            .clone();
                         rule.rhs[j] = Symbol::NonTerminal(non_term);
                     }
                 }
@@ -375,21 +378,33 @@ mod tests {
 
     #[test]
     fn test_unused_rules() {
-        let cfg = ContextFreeGrammar::builder().peacock_grammar("test-data/grammars/unused_rules.json").unwrap().build().unwrap();
+        let cfg = ContextFreeGrammar::builder()
+            .peacock_grammar("test-data/grammars/unused_rules.json")
+            .unwrap()
+            .build()
+            .unwrap();
 
         println!("{:#?}", cfg.rules());
     }
 
     #[test]
     fn test_duplicate_rules() {
-        let cfg = ContextFreeGrammar::builder().peacock_grammar("test-data/grammars/duplicate_rules.json").unwrap().build().unwrap();
+        let cfg = ContextFreeGrammar::builder()
+            .peacock_grammar("test-data/grammars/duplicate_rules.json")
+            .unwrap()
+            .build()
+            .unwrap();
 
         println!("{:#?}", cfg.rules());
     }
 
     #[test]
     fn test_unit_rules() {
-        let cfg = ContextFreeGrammar::builder().peacock_grammar("test-data/grammars/unit_rules.json").unwrap().build().unwrap();
+        let cfg = ContextFreeGrammar::builder()
+            .peacock_grammar("test-data/grammars/unit_rules.json")
+            .unwrap()
+            .build()
+            .unwrap();
 
         println!("{:#?}", cfg.rules());
     }
@@ -397,7 +412,11 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_recursion() {
-        let cfg = ContextFreeGrammar::builder().peacock_grammar("test-data/grammars/recursion.json").unwrap().build().unwrap();
+        let cfg = ContextFreeGrammar::builder()
+            .peacock_grammar("test-data/grammars/recursion.json")
+            .unwrap()
+            .build()
+            .unwrap();
 
         println!("{:#?}", cfg.rules());
     }
@@ -405,7 +424,11 @@ mod tests {
     #[test]
     #[ignore]
     fn test_mixed_rules() {
-        let cfg = ContextFreeGrammar::builder().peacock_grammar("test-data/grammars/mixed_rules.json").unwrap().build().unwrap();
+        let cfg = ContextFreeGrammar::builder()
+            .peacock_grammar("test-data/grammars/mixed_rules.json")
+            .unwrap()
+            .build()
+            .unwrap();
 
         println!("{:#?}", cfg.rules());
     }

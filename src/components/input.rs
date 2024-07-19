@@ -55,7 +55,11 @@ impl Input for PeacockInput {
         let mut bytes: Vec<u8> = vec![];
         file.read_to_end(&mut bytes)?;
 
-        let is_raw = if let Some(file_name) = path.file_name().and_then(|x| x.to_str()) { file_name.starts_with(BINARY_PREFIX) } else { false };
+        let is_raw = if let Some(file_name) = path.file_name().and_then(|x| x.to_str()) {
+            file_name.starts_with(BINARY_PREFIX)
+        } else {
+            false
+        };
 
         if is_raw {
             Ok(postcard::from_bytes(&bytes)?)
@@ -79,7 +83,9 @@ impl HasLen for PeacockInput {
 
 impl HasTargetBytes for PeacockInput {
     fn target_bytes(&self) -> OwnedSlice<u8> {
-        let len = generator_serialize(&self.sequence, unsafe { SERIALIZATION_BUFFER.as_mut_ptr() }, unsafe { SERIALIZATION_BUFFER.len() });
+        let len = generator_serialize(&self.sequence, unsafe { SERIALIZATION_BUFFER.as_mut_ptr() }, unsafe {
+            SERIALIZATION_BUFFER.len()
+        });
 
         unsafe { OwnedSlice::from_raw_parts(SERIALIZATION_BUFFER.as_ptr(), len) }
     }

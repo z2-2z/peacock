@@ -161,7 +161,11 @@ mod tests {
 
     #[test]
     fn test_gramatron_grammar() {
-        let cfg = ContextFreeGrammar::builder().gramatron_grammar("test-data/grammars/gramatron.json").unwrap().build().unwrap();
+        let cfg = ContextFreeGrammar::builder()
+            .gramatron_grammar("test-data/grammars/gramatron.json")
+            .unwrap()
+            .build()
+            .unwrap();
         println!("{:#?}", cfg.rules());
     }
 }

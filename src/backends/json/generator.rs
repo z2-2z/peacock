@@ -78,7 +78,12 @@ mod tests {
 
     #[test]
     fn test_generator() {
-        let cfg = ContextFreeGrammar::builder().gramatron_grammar("test-data/grammars/gramatron.json").unwrap().optimize(false).build().unwrap();
+        let cfg = ContextFreeGrammar::builder()
+            .gramatron_grammar("test-data/grammars/gramatron.json")
+            .unwrap()
+            .optimize(false)
+            .build()
+            .unwrap();
         JsonGenerator::new().generate("/tmp/new.json", &cfg);
 
         ContextFreeGrammar::builder().peacock_grammar("/tmp/new.json").unwrap().build().unwrap();

@@ -96,7 +96,11 @@ mod tests {
 
     #[test]
     fn test_interpreter() {
-        let cfg = ContextFreeGrammar::builder().gramatron_grammar("test-data/grammars/gramatron.json").unwrap().build().unwrap();
+        let cfg = ContextFreeGrammar::builder()
+            .gramatron_grammar("test-data/grammars/gramatron.json")
+            .unwrap()
+            .build()
+            .unwrap();
         let mut stdout = std::io::stdout();
         let mut interpreter = GrammarInterpreter::new(&cfg);
         interpreter.seed(1238);

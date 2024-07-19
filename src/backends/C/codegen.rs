@@ -157,7 +157,10 @@ fn emit_mutation_declarations(grammar: &LowLevelGrammar, fmt: &mut CFormatter<Fi
     fmt.write("/* Forward declarations for sequence mutation functions */");
 
     for nonterm in grammar.rules().keys() {
-        fmt.write(format!("static int mutate_seq_nonterm{} (size_t* const, size_t* const, const size_t, size_t* const);", *nonterm));
+        fmt.write(format!(
+            "static int mutate_seq_nonterm{} (size_t* const, size_t* const, const size_t, size_t* const);",
+            *nonterm
+        ));
     }
 
     fmt.blankline();
@@ -264,8 +267,16 @@ fn emit_mutation_function_multiple(rules: &[Vec<LLSymbol>], fmt: &mut CFormatter
     fmt.write("return 1;");
 }
 
-fn emit_mutation_function(nonterm: usize, rules: &[Vec<LLSymbol>], grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
-    fmt.write(format!("// This is the sequence mutation function for non-terminal {:?}", grammar.nonterminals()[nonterm]));
+fn emit_mutation_function(
+    nonterm: usize,
+    rules: &[Vec<LLSymbol>],
+    grammar: &LowLevelGrammar,
+    fmt: &mut CFormatter<File>,
+) {
+    fmt.write(format!(
+        "// This is the sequence mutation function for non-terminal {:?}",
+        grammar.nonterminals()[nonterm]
+    ));
     fmt.write(format!("static int mutate_seq_nonterm{} (size_t* const buf, size_t* const len, const size_t capacity, size_t* const step) {{", nonterm));
     fmt.indent();
 
@@ -446,13 +457,21 @@ fn emit_serialization_function_multiple(rules: &[Vec<LLSymbol>], fmt: &mut CForm
     fmt.write("return (size_t) (out - original_out);");
 }
 
-fn emit_serialization_function(nonterm: usize, rules: &[Vec<LLSymbol>], grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
+fn emit_serialization_function(
+    nonterm: usize,
+    rules: &[Vec<LLSymbol>],
+    grammar: &LowLevelGrammar,
+    fmt: &mut CFormatter<File>,
+) {
     fmt.write(format!("// This is the serialization function for non-terminal {:?}", grammar.nonterminals()[nonterm]));
     fmt.write(format!("static size_t serialize_seq_nonterm{} (const size_t* const seq, const size_t seq_len, unsigned char* out, size_t out_len, size_t* const step) {{", nonterm));
     fmt.indent();
 
     #[cfg(feature = "debug-codegen")]
-    fmt.write(format!("printf(\"Serializing %s (%lu/%lu)\\n\", {:?}, *step + 1, seq_len);", grammar.nonterminals()[nonterm]));
+    fmt.write(format!(
+        "printf(\"Serializing %s (%lu/%lu)\\n\", {:?}, *step + 1, seq_len);",
+        grammar.nonterminals()[nonterm]
+    ));
 
     if rules.is_empty() {
         unreachable!()
@@ -496,7 +515,12 @@ fn emit_serialization_code(grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>
     emit_serialization_entrypoint(grammar, fmt);
 }
 
-fn emit_header(mut outfile: File, mutations: bool, serializations: bool, unparsing: bool) -> Result<(), std::io::Error> {
+fn emit_header(
+    mut outfile: File,
+    mutations: bool,
+    serializations: bool,
+    unparsing: bool,
+) -> Result<(), std::io::Error> {
     write!(
         &mut outfile,
         "
@@ -542,7 +566,12 @@ fn emit_unparsing_declarations(grammar: &LowLevelGrammar, fmt: &mut CFormatter<F
     fmt.blankline();
 }
 
-fn emit_unparsing_function(nonterm: usize, rules: &[Vec<LLSymbol>], grammar: &LowLevelGrammar, fmt: &mut CFormatter<File>) {
+fn emit_unparsing_function(
+    nonterm: usize,
+    rules: &[Vec<LLSymbol>],
+    grammar: &LowLevelGrammar,
+    fmt: &mut CFormatter<File>,
+) {
     fmt.write(format!("// This is the unparsing function for non-terminal {:?}", grammar.nonterminals()[nonterm]));
     fmt.write(format!("static int unparse_seq_nonterm{} (Sequence* const seq, const unsigned char* const input, const size_t input_len, size_t* const cursor) {{", nonterm));
     fmt.indent();
@@ -584,7 +613,10 @@ fn emit_unparsing_function(nonterm: usize, rules: &[Vec<LLSymbol>], grammar: &Lo
                     fmt.blankline();
                 },
                 LLSymbol::NonTerminal(nonterm) => {
-                    fmt.write(format!("if (!unparse_seq_nonterm{}(seq, input, input_len, &tmp_cursor)) {{", nonterm.id()));
+                    fmt.write(format!(
+                        "if (!unparse_seq_nonterm{}(seq, input, input_len, &tmp_cursor)) {{",
+                        nonterm.id()
+                    ));
                     fmt.indent();
                     fmt.write("break;");
                     fmt.unindent();
@@ -751,7 +783,8 @@ impl CGenerator {
             let mut outfile = output.as_ref().to_path_buf();
             outfile.set_extension("h");
             let outfile = File::create(outfile).expect("Could not create header file");
-            emit_header(outfile, self.mutations, self.serializations, self.unparsing).expect("Could not write to header file");
+            emit_header(outfile, self.mutations, self.serializations, self.unparsing)
+                .expect("Could not write to header file");
         }
     }
 }
@@ -762,7 +795,11 @@ mod tests {
 
     #[test]
     fn test_generator() {
-        let cfg = ContextFreeGrammar::builder().gramatron_grammar("test-data/grammars/gramatron.json").unwrap().build().unwrap();
+        let cfg = ContextFreeGrammar::builder()
+            .gramatron_grammar("test-data/grammars/gramatron.json")
+            .unwrap()
+            .build()
+            .unwrap();
         CGenerator::new().generate("/tmp/out.c", &cfg);
     }
 }

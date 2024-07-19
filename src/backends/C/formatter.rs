@@ -30,7 +30,8 @@ where
     }
 
     pub fn write<S: AsRef<str>>(&mut self, line: S) {
-        writeln!(&mut self.stream, "{:width$}{}", "", line.as_ref(), width = self.indentation).expect("Could not write to outfile");
+        writeln!(&mut self.stream, "{:width$}{}", "", line.as_ref(), width = self.indentation)
+            .expect("Could not write to outfile");
     }
 
     pub fn blankline(&mut self) {

@@ -222,7 +222,8 @@ fn fuzz(args: Args) -> Result<(), Error> {
         let shmem_buf = shmem.as_slice_mut();
         std::env::set_var("AFL_MAP_SIZE", format!("{}", map_size));
 
-        let edges_observer = unsafe { HitcountsMapObserver::new(StdMapObserver::new("shared_mem", shmem_buf)).track_indices() };
+        let edges_observer =
+            unsafe { HitcountsMapObserver::new(StdMapObserver::new("shared_mem", shmem_buf)).track_indices() };
 
         let time_observer = TimeObserver::new("time");
 
@@ -239,14 +240,23 @@ fn fuzz(args: Args) -> Result<(), Error> {
         let mut state = if let Some(state) = state {
             state
         } else {
-            StdState::new(StdRand::with_seed(seed), CachedOnDiskCorpus::<PeacockInput>::new(&queue_dir, 128)?, OnDiskCorpus::new(crashes_dir)?, &mut feedback, &mut objective)?
+            StdState::new(
+                StdRand::with_seed(seed),
+                CachedOnDiskCorpus::<PeacockInput>::new(&queue_dir, 128)?,
+                OnDiskCorpus::new(crashes_dir)?,
+                &mut feedback,
+                &mut objective,
+            )?
         };
 
         let mutator = PeacockMutator::new();
 
         let mutational = StdMutationalStage::with_max_iterations(mutator, 1);
 
-        let scheduler = IndexesLenTimeMinimizerScheduler::new(&edges_observer, StdWeightedScheduler::with_schedule(&mut state, &edges_observer, Some(powerschedule)));
+        let scheduler = IndexesLenTimeMinimizerScheduler::new(
+            &edges_observer,
+            StdWeightedScheduler::with_schedule(&mut state, &edges_observer, Some(powerschedule)),
+        );
 
         let mut fuzzer = StdFuzzer::new(scheduler, feedback, objective);
 
@@ -292,7 +302,15 @@ fn fuzz(args: Args) -> Result<(), Error> {
 
     let cores = Cores::from_cmdline(&args.cores).expect("Invalid core specification");
 
-    match Launcher::builder().shmem_provider(shmem_provider).configuration(EventConfig::AlwaysUnique).monitor(monitor).run_client(&mut run_client).cores(&cores).build().launch() {
+    match Launcher::builder()
+        .shmem_provider(shmem_provider)
+        .configuration(EventConfig::AlwaysUnique)
+        .monitor(monitor)
+        .run_client(&mut run_client)
+        .cores(&cores)
+        .build()
+        .launch()
+    {
         Err(Error::ShuttingDown) | Ok(()) => Ok(()),
         e => e,
     }

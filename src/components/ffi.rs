@@ -5,9 +5,11 @@ use {
 };
 
 type GrammarMutationFunc = unsafe extern "C" fn(buf: *mut usize, len: usize, capacity: usize) -> usize;
-type GrammarSerializationFunc = unsafe extern "C" fn(seq: *const usize, seq_len: usize, out: *mut u8, out_len: usize) -> usize;
+type GrammarSerializationFunc =
+    unsafe extern "C" fn(seq: *const usize, seq_len: usize, out: *mut u8, out_len: usize) -> usize;
 type GrammarSeedFunc = unsafe extern "C" fn(seed: usize);
-type GrammarUnparseFunc = unsafe extern "C" fn(seq: *mut usize, seq_capacity: usize, input: *const u8, input_len: usize) -> usize;
+type GrammarUnparseFunc =
+    unsafe extern "C" fn(seq: *mut usize, seq_capacity: usize, input: *const u8, input_len: usize) -> usize;
 
 #[allow(non_upper_case_globals)]
 static mut grammar_mutate: Option<GrammarMutationFunc> = None;

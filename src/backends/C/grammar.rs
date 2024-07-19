@@ -107,7 +107,11 @@ mod tests {
 
     #[test]
     fn test_ll() {
-        let cfg = ContextFreeGrammar::builder().peacock_grammar("test-data/grammars/unit_rules.json").unwrap().build().unwrap();
+        let cfg = ContextFreeGrammar::builder()
+            .peacock_grammar("test-data/grammars/unit_rules.json")
+            .unwrap()
+            .build()
+            .unwrap();
         let ll = LowLevelGrammar::from_high_level_grammar(&cfg);
         println!("{:#?}", ll.rules());
         println!("terminals = {:?}", ll.terminals());
