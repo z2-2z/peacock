@@ -1,9 +1,9 @@
 [package]
 name = "peacock-fuzz"
 description = "Library to parse context-free grammars and create grammar-based fuzzing tools"
-version = "0.2.3"
+version = "0.2.4"
 edition = "2021"
-license-file = "COPYING"
+license = "GPL-3.0-only"
 readme = "README.md"
 repository = "https://github.com/z2-2z/peacock"
 keywords = ["fuzzing", "grammars"]
@@ -29,9 +29,9 @@ itertools = "0.12"
 libloading = "0.8"
 clap = { version = "4.4", features = ["derive"] }
 serde = "1.0"
-libafl = "0.13.0"
+libafl = "0.13"
 postcard = "1.0"
-libafl_bolts = "0.13.0"
+libafl_bolts = "0.13"
 nix = "0.29"
 
 [[bin]]

@@ -1,4 +1,7 @@
-use std::io::{Write, BufWriter};
+use std::io::{
+    BufWriter,
+    Write,
+};
 
 pub struct CFormatter<T: Write> {
     stream: BufWriter<T>,
@@ -15,21 +18,21 @@ where
             indentation: 0,
         }
     }
-    
+
     pub fn indent(&mut self) {
         self.indentation += 4;
     }
-    
+
     pub fn unindent(&mut self) {
         if self.indentation > 0 {
             self.indentation -= 4;
         }
     }
-    
+
     pub fn write<S: AsRef<str>>(&mut self, line: S) {
         writeln!(&mut self.stream, "{:width$}{}", "", line.as_ref(), width = self.indentation).expect("Could not write to outfile");
     }
-    
+
     pub fn blankline(&mut self) {
         writeln!(&mut self.stream).expect("Could not write to outfile");
     }
@@ -39,7 +42,7 @@ where
 mod tests {
     use super::*;
     use std::io::stdout;
-    
+
     #[test]
     fn test_formatter() {
         let mut fmt = CFormatter::new(stdout());

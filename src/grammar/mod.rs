@@ -1,5 +1,5 @@
 //! This is the frontend that loads grammars.
-//! 
+//!
 //! Use it like so:
 //! ```
 //! // Load multiple grammars by joining their rules:
@@ -18,7 +18,7 @@
 //! for rule in grammar.rules() {
 //!     // The left-hand-side (lhs) of a rule is a single non-terminal
 //!     println!("lhs = {:?}", rule.lhs());
-//! 
+//!
 //!     // The right-hand-side (rhs) of a rule is a sequence of terminals and non-terminals.
 //!     // This is captured in the enum "Symbol".
 //!     for symbol in rule.rhs() {

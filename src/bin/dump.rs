@@ -1,25 +1,26 @@
 use clap::Parser;
-use std::io::Write;
 use libafl::prelude::{
-    Input, HasTargetBytes,
+    HasTargetBytes,
+    Input,
 };
 use libafl_bolts::prelude::AsSlice;
 use peacock_fuzz::components::{
     load_generator,
     PeacockInput,
-};   
+};
+use std::io::Write;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
     #[arg(short, long)]
     generator: String,
-    
+
     file: String,
 }
 
 fn main() {
-    let args = Args::parse();    
+    let args = Args::parse();
     load_generator(&args.generator);
     let input = PeacockInput::from_file(&args.file).expect("Could not load specified input file");
     let input = input.target_bytes();

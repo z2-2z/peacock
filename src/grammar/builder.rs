@@ -1,16 +1,29 @@
-use std::path::Path;
-use std::collections::HashSet;
+use std::{
+    collections::HashSet,
+    path::Path,
+};
 
 use crate::{
-    parser::{peacock, gramatron},
-    grammar::{ContextFreeGrammar, ProductionRule, Symbol, NonTerminal},
-    error::{ParsingError, GrammarError},
+    error::{
+        GrammarError,
+        ParsingError,
+    },
+    grammar::{
+        ContextFreeGrammar,
+        NonTerminal,
+        ProductionRule,
+        Symbol,
+    },
+    parser::{
+        gramatron,
+        peacock,
+    },
 };
 
 /// The default non-terminal that is used as an entrypoint to the grammar
 pub const DEFAULT_ENTRYPOINT: &str = "ENTRYPOINT";
 
-/// The GrammarBuilder loads grammars from disk and returns a unified [`ContextFreeGrammar`]. 
+/// The GrammarBuilder loads grammars from disk and returns a unified [`ContextFreeGrammar`].
 ///    
 /// Use it like so:
 /// ```
@@ -38,24 +51,24 @@ impl GrammarBuilder {
             entrypoint: DEFAULT_ENTRYPOINT.to_string(),
         }
     }
-    
+
     fn check_entrypoint(&self) -> bool {
         for rule in &self.rules {
             if rule.lhs().id() == self.entrypoint {
                 return false;
             }
         }
-        
+
         true
     }
-    
+
     fn check_non_terminals(&self) -> Option<String> {
         let mut defined_non_terms = HashSet::new();
-        
+
         for rule in &self.rules {
             defined_non_terms.insert(rule.lhs().id());
         }
-        
+
         for rule in &self.rules {
             for symbol in rule.rhs() {
                 if let Symbol::NonTerminal(nonterm) = symbol {
@@ -65,7 +78,7 @@ impl GrammarBuilder {
                 }
             }
         }
-        
+
         None
     }
 }
@@ -78,51 +91,48 @@ impl GrammarBuilder {
         self.rules.append(&mut new_rules);
         Ok(self)
     }
-    
+
     /// Load a grammar from disk that is in [Gramatron](https://github.com/HexHive/Gramatron)'s format.
     pub fn gramatron_grammar<P: AsRef<Path>>(mut self, path: P) -> Result<Self, ParsingError> {
         let mut new_rules = gramatron::parse_json(path.as_ref())?;
         self.rules.append(&mut new_rules);
         Ok(self)
     }
-    
+
     /// Apply Gramatron-style optimizations to this grammar that enable better mutation quality.
-    /// 
+    ///
     /// Default: `true`
     pub fn optimize(mut self, optimize: bool) -> Self {
         self.optimize = optimize;
         self
     }
-    
+
     /// Set the entrypoint of all loaded grammars to be the given non-terminal `entrypoint`.
-    /// 
+    ///
     /// Default: [`DEFAULT_ENTRYPOINT`]
     pub fn entrypoint<S: Into<String>>(mut self, entrypoint: S) -> Self {
         self.entrypoint = entrypoint.into();
         self
     }
-    
+
     /// Create a [`ContextFreeGrammar`].
     pub fn build(self) -> Result<ContextFreeGrammar, GrammarError> {
         if self.check_entrypoint() {
             return Err(GrammarError::MissingEntrypoint(self.entrypoint));
         }
-        
+
         if let Some(nonterm) = self.check_non_terminals() {
             return Err(GrammarError::MissingNonTerminal(nonterm));
         }
-        
-        let mut cfg = ContextFreeGrammar::new(
-            self.rules,
-            NonTerminal::new(self.entrypoint),
-        );
-        
+
+        let mut cfg = ContextFreeGrammar::new(self.rules, NonTerminal::new(self.entrypoint));
+
         if self.optimize {
             cfg.concatenate_terminals();
             cfg.remove_duplicate_rules();
             cfg.remove_unit_rules();
             cfg.remove_unused_rules();
-            
+
             if !cfg.is_in_gnf() {
                 cfg.remove_mixed_rules();
                 cfg.break_rules();
@@ -130,11 +140,11 @@ impl GrammarBuilder {
                 cfg.remove_unused_rules();
             }
         }
-        
+
         if cfg.count_entrypoint_rules() > 1 {
             cfg.set_new_entrypoint();
         }
-        
+
         Ok(cfg)
     }
 }
@@ -142,22 +152,16 @@ impl GrammarBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     #[should_panic]
     fn test_missing_refs() {
-        ContextFreeGrammar::builder()
-            .peacock_grammar("test-data/grammars/invalid-refs.json").unwrap()
-            .build()
-            .unwrap();
+        ContextFreeGrammar::builder().peacock_grammar("test-data/grammars/invalid-refs.json").unwrap().build().unwrap();
     }
-    
+
     #[test]
     fn test_gramatron_grammar() {
-        let cfg = ContextFreeGrammar::builder()
-            .gramatron_grammar("test-data/grammars/gramatron.json").unwrap()
-            .build()
-            .unwrap();
+        let cfg = ContextFreeGrammar::builder().gramatron_grammar("test-data/grammars/gramatron.json").unwrap().build().unwrap();
         println!("{:#?}", cfg.rules());
     }
 }

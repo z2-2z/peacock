@@ -1,5 +1,5 @@
 //! Generate a grammar in peacock format.
-//! 
+//!
 //! Use it like so:
 //! ```
 //! // First, load multiple grammars from disk. This will merge all the rules.
@@ -8,7 +8,7 @@
 //!     .peacock_grammar("common-definitions.json").unwrap()
 //!     .gramatron_grammar("my-old-grammar.json").unwrap()
 //!     .build().unwrap();
-//! 
+//!
 //! // Then, create a single new grammar in peacock format.
 //! JsonGenerator::new().generate("merged-grammar.json", &grammar);
 //! ```

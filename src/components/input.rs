@@ -1,18 +1,27 @@
-use serde::{Serialize, Deserialize};
+use ahash::RandomState;
 use libafl::prelude::{
-    Input, HasTargetBytes, Error,
+    CorpusId,
+    Error,
+    HasTargetBytes,
+    Input,
 };
 use libafl_bolts::prelude::{
-    HasLen, OwnedSlice,
+    HasLen,
+    OwnedSlice,
 };
-use ahash::RandomState;
-use std::path::Path;
-use std::fs::File;
-use std::io::Read;
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use std::{
+    fs::File,
+    io::Read,
+    path::Path,
+};
 
 use crate::components::ffi::{
-    generator_unparse,
     generator_serialize,
+    generator_unparse,
 };
 
 const BINARY_PREFIX: &str = "peacock-raw-";
@@ -28,39 +37,35 @@ impl PeacockInput {
     pub(crate) fn sequence(&self) -> &[usize] {
         &self.sequence
     }
-    
+
     pub(crate) fn sequence_mut(&mut self) -> &mut Vec<usize> {
         &mut self.sequence
     }
 }
 
 impl Input for PeacockInput {
-    fn generate_name(&self, _idx: usize) -> String {
+    fn generate_name(&self, _idx: Option<CorpusId>) -> String {
         let hash = RandomState::with_seeds(0, 0, 0, 0).hash_one(self);
         format!("{}{:016x}", BINARY_PREFIX, hash)
     }
-    
+
     fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
         let path = path.as_ref();
         let mut file = File::open(path)?;
         let mut bytes: Vec<u8> = vec![];
         file.read_to_end(&mut bytes)?;
-        
-        let is_raw = if let Some(file_name) = path.file_name().and_then(|x| x.to_str()) {
-            file_name.starts_with(BINARY_PREFIX)
-        } else {
-            false
-        };
-        
+
+        let is_raw = if let Some(file_name) = path.file_name().and_then(|x| x.to_str()) { file_name.starts_with(BINARY_PREFIX) } else { false };
+
         if is_raw {
             Ok(postcard::from_bytes(&bytes)?)
         } else {
             let mut ret = Self::default();
-            
+
             if !generator_unparse(&mut ret.sequence, &bytes) {
                 return Err(Error::serialize(format!("Could not unparse sequence from input file {}", path.display())));
             }
-            
+
             Ok(ret)
         }
     }
@@ -74,11 +79,9 @@ impl HasLen for PeacockInput {
 
 impl HasTargetBytes for PeacockInput {
     fn target_bytes(&self) -> OwnedSlice<u8> {
-        let len = generator_serialize(&self.sequence, unsafe { &mut SERIALIZATION_BUFFER });
-        
-        unsafe {
-            OwnedSlice::from_raw_parts(SERIALIZATION_BUFFER.as_ptr(), len)
-        }
+        let len = generator_serialize(&self.sequence, unsafe { SERIALIZATION_BUFFER.as_mut_ptr() }, unsafe { SERIALIZATION_BUFFER.len() });
+
+        unsafe { OwnedSlice::from_raw_parts(SERIALIZATION_BUFFER.as_ptr(), len) }
     }
 }
 

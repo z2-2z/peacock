@@ -1,9 +1,10 @@
-use libafl::prelude::{
-    Generator, Error,
-};
 use crate::components::{
-    PeacockInput,
     ffi::generator_mutate,
+    PeacockInput,
+};
+use libafl::prelude::{
+    Error,
+    Generator,
 };
 
 /// This component generates new inputs from scratch.

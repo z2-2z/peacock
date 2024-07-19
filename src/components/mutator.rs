@@ -1,14 +1,18 @@
-use libafl_bolts::prelude::{
-    Named, Rand,
-};
 use libafl::prelude::{
-    Mutator, MutationResult, Error, HasRand,
+    Error,
+    HasRand,
+    MutationResult,
+    Mutator,
+};
+use libafl_bolts::prelude::{
+    Named,
+    Rand,
 };
 use std::borrow::Cow;
 
 use crate::components::{
-    PeacockInput,
     ffi::generator_mutate,
+    PeacockInput,
 };
 
 /// This component implements grammar-based mutations.

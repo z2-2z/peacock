@@ -1,2 +1,2 @@
-pub mod peacock;
 pub mod gramatron;
+pub mod peacock;
