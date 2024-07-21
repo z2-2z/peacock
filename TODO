@@ -1,2 +1,5 @@
-- comment function in CGenerator: headline, annotation
-- run static code analyzers over generated C code
+- comment functions in CGenerator: headline, annotation
+- peacock-gen take input on stdin if stdin is pipe, parse it and print mutation
+- reproducible benchmarks
+- rename peacock-raw filename to peacock-seq
+- better handling of static-loading in components/ffi.rs
